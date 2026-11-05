@@ -1,0 +1,898 @@
+{
+ "D": {
+  "flows": [
+   {
+    "id": "XA5MGj",
+    "name": "Ex-Trade Members - Welcome Series",
+    "short": "Ex-Trade Members",
+    "c": "--s1"
+   },
+   {
+    "id": "SZMWtA",
+    "name": "Ex-Trade Members (TEC) - Welcome Series",
+    "short": "Ex-Trade TEC",
+    "c": "--s2"
+   },
+   {
+    "id": "SVNQ6Y",
+    "name": "B2B - Welcome Series",
+    "short": "B2B Welcome",
+    "c": "--s3"
+   },
+   {
+    "id": "RjvnXL",
+    "name": "B2B Masterlist - Re-Entry Flow",
+    "short": "B2B Masterlist",
+    "c": "--s4"
+   }
+  ],
+  "msgs": [
+   {
+    "f": "XA5MGj",
+    "m": "Welcome #1: Never Purchased",
+    "rec": 665,
+    "del": 661,
+    "opens": 165,
+    "clicks": 2,
+    "conv": 1,
+    "rev": 223.61,
+    "unsub": 0,
+    "bounced": 4,
+    "spam": 1
+   },
+   {
+    "f": "SZMWtA",
+    "m": "Welcome #1: Never Purchased",
+    "rec": 613,
+    "del": 612,
+    "opens": 242,
+    "clicks": 1,
+    "conv": 0,
+    "rev": 0,
+    "unsub": 4,
+    "bounced": 1,
+    "spam": 0
+   },
+   {
+    "f": "SVNQ6Y",
+    "m": "Welcome #1: Existing Customer",
+    "rec": 2,
+    "del": 2,
+    "opens": 2,
+    "clicks": 0,
+    "conv": 0,
+    "rev": 0,
+    "unsub": 0,
+    "bounced": 0,
+    "spam": 0
+   },
+   {
+    "f": "SVNQ6Y",
+    "m": "Welcome #1: Never Purchased",
+    "rec": 1,
+    "del": 1,
+    "opens": 0,
+    "clicks": 0,
+    "conv": 0,
+    "rev": 0,
+    "unsub": 0,
+    "bounced": 0,
+    "spam": 0
+   },
+   {
+    "f": "RjvnXL",
+    "m": "Welcome #1: Never Purchased",
+    "rec": 0,
+    "del": 0,
+    "opens": 0,
+    "clicks": 0,
+    "conv": 0,
+    "rev": 0,
+    "unsub": 0,
+    "bounced": 0,
+    "spam": 0
+   }
+  ],
+  "enr": [
+   {
+    "d": "2026-10-31",
+    "XA5MGj": 0,
+    "SZMWtA": 0,
+    "SVNQ6Y": 0,
+    "RjvnXL": 0
+   },
+   {
+    "d": "2026-11-01",
+    "XA5MGj": 0,
+    "SZMWtA": 0,
+    "SVNQ6Y": 0,
+    "RjvnXL": 0
+   },
+   {
+    "d": "2026-11-02",
+    "XA5MGj": 0,
+    "SZMWtA": 0,
+    "SVNQ6Y": 0,
+    "RjvnXL": 0
+   },
+   {
+    "d": "2026-11-03",
+    "XA5MGj": 0,
+    "SZMWtA": 0,
+    "SVNQ6Y": 0,
+    "RjvnXL": 0
+   },
+   {
+    "d": "2026-11-04",
+    "XA5MGj": 661,
+    "SZMWtA": 612,
+    "SVNQ6Y": 3,
+    "RjvnXL": 0
+   }
+  ],
+  "top": [
+   {
+    "d": "2026-10-31",
+    "net": 220630.88,
+    "gross": 508058.24,
+    "orders": 545,
+    "oi": 228393.01,
+    "cost": 122344.05,
+    "b2b": 0,
+    "b2bo": 0
+   },
+   {
+    "d": "2026-11-01",
+    "net": 335395.12,
+    "gross": 697751.3,
+    "orders": 812,
+    "oi": 340148.33,
+    "cost": 174392.22,
+    "b2b": 0,
+    "b2bo": 0
+   },
+   {
+    "d": "2026-11-02",
+    "net": 342628.55,
+    "gross": 725230.05,
+    "orders": 851,
+    "oi": 357644.01,
+    "cost": 185297.82,
+    "b2b": 0,
+    "b2bo": 0
+   },
+   {
+    "d": "2026-11-03",
+    "net": 236233.35,
+    "gross": 511429.44,
+    "orders": 598,
+    "oi": 251639.33,
+    "cost": 131789.5,
+    "b2b": 0,
+    "b2bo": 0
+   },
+   {
+    "d": "2026-11-04",
+    "net": 75577.42,
+    "gross": 163598.43,
+    "orders": 158,
+    "oi": 81752.65,
+    "cost": 40362.76,
+    "b2b": 0,
+    "b2bo": 0
+   }
+  ],
+  "issues": [
+   {
+    "sev": "HIGH",
+    "flow": "B2B Masterlist - Re-Entry Flow",
+    "issue": "Live but zero sends so far",
+    "evidence": "Created Nov 4 21:47 UTC; no recipients yet. Trigger is 'Added to List' (B2B Masterlist), so existing members may not enter unless added after go-live.",
+    "action": "Confirm whether existing members should enter; re-add or use a segment trigger. Re-check in 24h."
+   },
+   {
+    "sev": "HIGH",
+    "flow": "B2B Masterlist - Re-Entry Flow",
+    "issue": "Coupon pools nearly empty for TRADE15 and TRADE20",
+    "evidence": "Verified in Klaviyo: exactly 2 unassigned TRADE15 codes and 2 unassigned TRADE20 codes remain (no further page). 4,141 of each were assigned since Oct 31.",
+    "action": "Upload more codes before the flow sends, or the coupon block may render blank."
+   },
+   {
+    "sev": "HIGH",
+    "flow": "Ex-Trade Members, Ex-Trade TEC, B2B Welcome",
+    "issue": "Branch named 'Never Purchased' reads as 'has placed an order'",
+    "evidence": "Conditions: Placed Order (API) > 0 AND Placed Order (Shopify) > 0 alltime; condition groups combine with AND. 665 of 665 Ex-Trade Members and 613 of 613 TEC sends went through this branch.",
+    "action": "Verify intent in the flow UI: labels, conditions (=0 vs >0) and copy look inconsistent."
+   },
+   {
+    "sev": "HIGH",
+    "flow": "Ex-Trade Members, Ex-Trade TEC",
+    "issue": "Copy/audience mismatch",
+    "evidence": "Subject promises 10% off 'your first order' but branch logic indicates recipients already ordered.",
+    "action": "Review audience vs subject; consider win-back copy."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "Ex-Trade Members, Ex-Trade TEC, B2B Masterlist",
+    "issue": "Else branch is a dead end",
+    "evidence": "The else branch of Split #1 has no next action, so non-matching people exit silently.",
+    "action": "Add an email or explicit exit; monitor via Ended Automation."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "All live flows",
+    "issue": "Single-email flows",
+    "evidence": "Each flow has one email, no follow-up or branching on engagement.",
+    "action": "Add 2nd/3rd touch to lift conversion."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "All live flows",
+    "issue": "Coupon USED status is 0 everywhere",
+    "evidence": "TRADE10/15/20, Trade_TRA, Trade_TRD all show USED 0 despite many assigned; redemption not syncing from Shopify.",
+    "action": "Use Shopify/BigQuery discount data for redemption; fix the sync."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "Ex-Trade TEC",
+    "issue": "Highest unsubscribe rate",
+    "evidence": "4 unsubscribes on 612 delivered (0.65%).",
+    "action": "Review segment and frequency; watch trend."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "Ex-Trade Members",
+    "issue": "Spam complaint above 0.1%",
+    "evidence": "1 complaint on 661 delivered (0.15%).",
+    "action": "Monitor; tighten audience if it recurs."
+   },
+   {
+    "sev": "INFO",
+    "flow": "All",
+    "issue": "Per-branch routing can't be measured via API",
+    "evidence": "Started Automation returned no per-flow data; flow report gives sends by message only.",
+    "action": "Check Flow Analytics in Klaviyo UI, or share an export."
+   },
+   {
+    "sev": "INFO",
+    "flow": "All",
+    "issue": "Too early for conclusions",
+    "evidence": "About 1,281 flow emails sent Nov 4; conversion windows run several days.",
+    "action": "Re-run in 5\u20137 days."
+   },
+   {
+    "sev": "MEDIUM",
+    "flow": "B2B sales tracking",
+    "issue": "CRTRA10 is used heavily but is not counted as B2B",
+    "evidence": "CRTRA10 appears on 93 positive-value orders ($43,452 Klaviyo order value) since Oct 31, almost all from buyers who are not otherwise in the B2B cohort. I do not know whether it is a trade code, so it is excluded from the B2B coupon signal until confirmed.",
+    "action": "Confirm what CRTRA10 is. If it is a trade code, tell me and I will add it to the cohort definition."
+   }
+  ],
+  "coupons": [
+   {
+    "n": "TRADE10",
+    "use": "Yes: 4 welcome emails + Masterlist (10% off, $999 min)",
+    "v": "not in coupon list",
+    "s": "Unknown",
+    "un": ">=100",
+    "as": ">=100",
+    "us": 0,
+    "low": false
+   },
+   {
+    "n": "TRADE15",
+    "use": "Yes: Masterlist only (15% off, $1,499 min)",
+    "v": "not in coupon list",
+    "s": "Unknown",
+    "un": "2",
+    "as": ">=100",
+    "us": 0,
+    "low": true
+   },
+   {
+    "n": "TRADE20",
+    "use": "Yes: Masterlist only (20% off, $3,000 min)",
+    "v": "not in coupon list",
+    "s": "Unknown",
+    "un": "2",
+    "as": ">=100",
+    "us": 0,
+    "low": true
+   },
+   {
+    "n": "Trade_TRA",
+    "use": "No",
+    "v": "until 2027-08-05",
+    "s": "Active",
+    "un": ">=100",
+    "as": "n/c",
+    "us": 0,
+    "low": false
+   },
+   {
+    "n": "Trade_TRD",
+    "use": "No",
+    "v": "1 year",
+    "s": "Active",
+    "un": ">=100",
+    "as": "n/c",
+    "us": 0,
+    "low": false
+   },
+   {
+    "n": "TRD500_Email",
+    "use": "No",
+    "v": "until 2026-01-31",
+    "s": "Expired",
+    "un": "0",
+    "as": ">=5 (sample)",
+    "us": "n/c",
+    "low": true
+   },
+   {
+    "n": "B2BPRES250_B2B",
+    "use": "No",
+    "v": "until 2026-02-13",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BPDGET5",
+    "use": "No",
+    "v": "until 2026-02-19",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BPD26EXT10",
+    "use": "No",
+    "v": "until 2026-02-23",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BSUN50",
+    "use": "No",
+    "v": "until 2026-03-13",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BGOLD50",
+    "use": "No",
+    "v": "until 2026-03-20",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BBO10",
+    "use": "No",
+    "v": "until 2026-03-20",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BSBF5",
+    "use": "No",
+    "v": "until 2026-04-06",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BSPRG50",
+    "use": "No",
+    "v": "until 2026-04-10",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BCRTN5",
+    "use": "No",
+    "v": "until 2026-04-10",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BLIGHT200",
+    "use": "No",
+    "v": "until 2026-04-17",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BSAVE8",
+    "use": "No",
+    "v": "until 2026-04-24",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BSPRING50",
+    "use": "No",
+    "v": "until 2026-05-02",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   },
+   {
+    "n": "B2BEASY50",
+    "use": "No",
+    "v": "until 2026-05-08",
+    "s": "Expired",
+    "un": "n/c",
+    "as": "n/c",
+    "us": "n/c",
+    "low": false
+   }
+  ],
+  "leads": [],
+  "meta": {
+   "asof": "2026-11-04",
+   "asof_long": "Nov 4 2026",
+   "range": "Oct 31 \u2013 Nov 4",
+   "range_long": "Oct 31 \u2013 Nov 4 2026",
+   "utc_range": "Oct 31 \u2013 Nov 5 UTC"
+  }
+ },
+ "cohort": [
+  {
+   "d": "10-31",
+   "core": {
+    "o": 19,
+    "net": 37866.72,
+    "cost": 20386.8,
+    "nl": 6,
+    "ns": 1,
+    "nf": 14,
+    "nm": 1,
+    "nc": 0,
+    "sl": 1727.55,
+    "ss": 72.6,
+    "sf": 36211.77,
+    "sm": 72.6,
+    "sc": 0
+   },
+   "ext": {
+    "o": 4,
+    "net": 1930.49,
+    "cost": 1078.39
+   }
+  },
+  {
+   "d": "11-01",
+   "core": {
+    "o": 30,
+    "net": 30170.13,
+    "cost": 16384.68,
+    "nl": 12,
+    "ns": 3,
+    "nf": 22,
+    "nm": 3,
+    "nc": 0,
+    "sl": 7209.13,
+    "ss": 2799.45,
+    "sf": 26534.92,
+    "sm": 2565.98,
+    "sc": 0
+   },
+   "ext": {
+    "o": 13,
+    "net": 16866.74,
+    "cost": 8880.42
+   }
+  },
+  {
+   "d": "11-02",
+   "core": {
+    "o": 26,
+    "net": 43946.72,
+    "cost": 22073.5,
+    "nl": 19,
+    "ns": 6,
+    "nf": 13,
+    "nm": 5,
+    "nc": 0,
+    "sl": 19662.13,
+    "ss": 5303.92,
+    "sf": 29588.51,
+    "sm": 4979.2,
+    "sc": 0
+   },
+   "ext": {
+    "o": 16,
+    "net": 21448.64,
+    "cost": 10788.62
+   }
+  },
+  {
+   "d": "11-03",
+   "core": {
+    "o": 30,
+    "net": 27538.21,
+    "cost": 16332.54,
+    "nl": 28,
+    "ns": 8,
+    "nf": 11,
+    "nm": 8,
+    "nc": 1,
+    "sl": 26691.56,
+    "ss": 4774.02,
+    "sf": 7185.96,
+    "sm": 5654.21,
+    "sc": 292.42
+   },
+   "ext": {
+    "o": 13,
+    "net": 21030.26,
+    "cost": 10799.61
+   }
+  },
+  {
+   "d": "11-04",
+   "core": {
+    "o": 6,
+    "net": 11240.61,
+    "cost": 5437.4,
+    "nl": 6,
+    "ns": 3,
+    "nf": 2,
+    "nm": 2,
+    "nc": 1,
+    "sl": 11240.61,
+    "ss": 8482.19,
+    "sf": 5660.69,
+    "sm": 5660.69,
+    "sc": 4127.74
+   },
+   "ext": {
+    "o": 1,
+    "net": 995.14,
+    "cost": 528.77
+   }
+  }
+ ],
+ "NA": {
+  "attr": {
+   "none": {
+    "o": 56,
+    "v": 58746.21
+   },
+   "total": {
+    "o": 127,
+    "v": 174297.27
+   },
+   "flows": [
+    {
+     "n": "Abandonment - Cart - Shopify",
+     "id": "Th98m6",
+     "o": 8,
+     "v": 28783.57,
+     "b2b": false
+    },
+    {
+     "n": "Welcome - SMS",
+     "id": "WCDn7c",
+     "o": 4,
+     "v": 15707.03,
+     "b2b": false
+    },
+    {
+     "n": "Samples Purchase - Shopify",
+     "id": "U2BQy6",
+     "o": 3,
+     "v": 9892.5,
+     "b2b": false
+    },
+    {
+     "n": "Welcome - Email - 45% Off (NEW45)",
+     "id": "RE9AJF",
+     "o": 4,
+     "v": 9876.81,
+     "b2b": false
+    },
+    {
+     "n": "Transactional - Order Confirmation",
+     "id": "WbjN4V",
+     "o": 2,
+     "v": 7665.55,
+     "b2b": false
+    },
+    {
+     "n": "Transactional - Delivery Confirmation",
+     "id": "WAhe75",
+     "o": 6,
+     "v": 5984.41,
+     "b2b": false
+    },
+    {
+     "n": "Trade - Initial Application Thanks + Membership Assignment",
+     "id": "T8tDXU",
+     "o": 3,
+     "v": 5843.66,
+     "b2b": true
+    },
+    {
+     "n": "Post Purchase - Review Request - Shopify",
+     "id": "RnPGiH",
+     "o": 3,
+     "v": 4938.21,
+     "b2b": false
+    },
+    {
+     "n": "Saved Cart Recovery Flow",
+     "id": "Sf32dx",
+     "o": 4,
+     "v": 2567.94,
+     "b2b": false
+    },
+    {
+     "n": "Abandonment - Checkout - Shopify",
+     "id": "VXy6ea",
+     "o": 5,
+     "v": 2482.75,
+     "b2b": false
+    },
+    {
+     "n": "Abandonment - Category Browse - Shopify",
+     "id": "SQ6hNw",
+     "o": 2,
+     "v": 2326.44,
+     "b2b": false
+    },
+    {
+     "n": "Abandonment - Product Browse - Shopify",
+     "id": "VVpjkY",
+     "o": 2,
+     "v": 2019.23,
+     "b2b": false
+    },
+    {
+     "n": "Trade - Membership Level Communication",
+     "id": "XcCt2k",
+     "o": 2,
+     "v": 725.69,
+     "b2b": true
+    },
+    {
+     "n": "B2B-Like Customers - Invite to Trade/Commercial",
+     "id": "TgGSgX",
+     "o": 1,
+     "v": 698.63,
+     "b2b": true
+    },
+    {
+     "n": "Post Purchase - Repurchase - Shopify",
+     "id": "Xd94fD",
+     "o": 2,
+     "v": 594.76,
+     "b2b": false
+    },
+    {
+     "n": "Transactional - Product Shipping Confirmation",
+     "id": "Vcem5F",
+     "o": 1,
+     "v": 575.29,
+     "b2b": false
+    },
+    {
+     "n": "Transactional - Product Shipping Confirmation (Fallback)",
+     "id": "TcSNSg",
+     "o": 1,
+     "v": 541.85,
+     "b2b": false
+    },
+    {
+     "n": "Transactional - Sample Shipping Confirmation",
+     "id": "T5rhiF",
+     "o": 1,
+     "v": 418.54,
+     "b2b": false
+    },
+    {
+     "n": "Ex-Trade Members - Welcome Series",
+     "id": "XA5MGj",
+     "o": 1,
+     "v": 223.61,
+     "b2b": true
+    },
+    {
+     "n": "Transactional - Out for Delivery Confirmation",
+     "id": "U6U3Qt",
+     "o": 1,
+     "v": 166.98,
+     "b2b": false
+    }
+   ],
+   "camps": [
+    {
+     "n": "prm_11042026",
+     "id": "01M6H4Q8...",
+     "o": 1,
+     "v": 4550.85,
+     "b2b": false
+    },
+    {
+     "n": "prm_10312026",
+     "id": "01M64J03...",
+     "o": 3,
+     "v": 2363.68,
+     "b2b": false
+    },
+    {
+     "n": "[Commercial] - News 11/4 - Active B2B",
+     "id": "01M6KHSM...",
+     "o": 1,
+     "v": 2085.63,
+     "b2b": true
+    },
+    {
+     "n": "prm_11012026_am",
+     "id": "01M66WBS...",
+     "o": 3,
+     "v": 1694.86,
+     "b2b": false
+    },
+    {
+     "n": "prm_11032026",
+     "id": "01M6EZ0W...",
+     "o": 2,
+     "v": 1323.14,
+     "b2b": false
+    },
+    {
+     "n": "prm_11012026_pm1",
+     "id": "01M67BY7...",
+     "o": 1,
+     "v": 720.31,
+     "b2b": false
+    },
+    {
+     "n": "prm_10282026",
+     "id": "01M5ZQPH...",
+     "o": 1,
+     "v": 447.36,
+     "b2b": false
+    },
+    {
+     "n": "prm_11012026_pm2",
+     "id": "01M67742...",
+     "o": 1,
+     "v": 259.24,
+     "b2b": false
+    },
+    {
+     "n": "prm_10302026",
+     "id": "01M64H02...",
+     "o": 1,
+     "v": 61.65,
+     "b2b": false
+    },
+    {
+     "n": "prm_11022026_am",
+     "id": "01M66XKS...",
+     "o": 1,
+     "v": 10.89,
+     "b2b": false
+    }
+   ]
+  },
+  "camp": [
+   {
+    "n": "[Commercial] - News 11/4 - Inactive B2B",
+    "aud": "B2B Masterlist - Inactive (list)",
+    "sent": "Nov 4, 15:25 UTC",
+    "rec": 4115,
+    "dl": 4102,
+    "opens": 1104,
+    "clicks": 7,
+    "conv": 0,
+    "rev": 0,
+    "unsub": 8
+   },
+   {
+    "n": "[Commercial] - News 11/4 - Active B2B",
+    "aud": "B2B Masterlist, excl. Inactive (list)",
+    "sent": "Nov 4, 15:26 UTC",
+    "rec": 22,
+    "dl": 22,
+    "opens": 9,
+    "clicks": 0,
+    "conv": 1,
+    "rev": 2085.63,
+    "unsub": 0
+   }
+  ],
+  "cp": [
+   {
+    "n": "TRADE10",
+    "where": "4 welcome flows + Masterlist Re-Entry (10% off, $999 min)",
+    "asg": 5300,
+    "left": ">=100",
+    "used": 0,
+    "matched": 0
+   },
+   {
+    "n": "TRADE15",
+    "where": "Masterlist Re-Entry template (15% off, $1,499 min)",
+    "asg": 4141,
+    "left": "2",
+    "used": 0,
+    "matched": 0,
+    "low": true
+   },
+   {
+    "n": "TRADE20",
+    "where": "Masterlist Re-Entry template (20% off, $3,000 min)",
+    "asg": 4141,
+    "left": "2",
+    "used": 0,
+    "matched": 0,
+    "low": true
+   },
+   {
+    "n": "Trade_TRD",
+    "where": "Not in live flow templates",
+    "asg": 151,
+    "left": ">=100",
+    "used": 0,
+    "matched": 0
+   },
+   {
+    "n": "Trade_TRA",
+    "where": "Not in live flow templates",
+    "asg": 0,
+    "left": ">=100",
+    "used": 0,
+    "matched": 0
+   },
+   {
+    "n": "TRD500_Email",
+    "where": "Expired 2026-01-31",
+    "asg": 0,
+    "left": "0",
+    "used": 0,
+    "matched": 0,
+    "low": true
+   }
+  ],
+  "sends": {
+   "flows": 1281,
+   "camps": 4137
+  }
+ }
+}
