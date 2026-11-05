@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B2B Flow Commercial Dashboard</title>
+<style>
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s7:#6250d6;--good:#0ca30c;--warn:#fab219;--crit:#d03b3b;--serious:#ec835a;--goodtext:#006300;--ghost:rgba(11,11,11,.05);
+--seq1:#cde2fb;--seq2:#86b6ef;--seq3:#3987e5;--seq4:#1c5cab;--seq5:#104281}
+:root[data-theme=dark]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s7:#9085e9;--goodtext:#0ca30c;--ghost:rgba(255,255,255,.07)}
+@media(prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s7:#9085e9;--goodtext:#0ca30c;--ghost:rgba(255,255,255,.07)}}
+*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--border);padding:12px 24px}
+h1{font-size:18px;margin:0 0 2px}.sub{color:var(--ink2);font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+nav{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+nav button,.btn,.chip{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer}
+nav button:hover,.btn:hover,.chip:hover{background:var(--ghost)}
+nav button[aria-selected=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;font-size:12px}
+.chip[aria-pressed=false]{opacity:.45}.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+main{padding:20px 24px;max-width:1300px;margin:0 auto}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card h2{font-size:14px;margin:0 0 2px}.card .note{color:var(--ink2);font-size:12px;margin-bottom:10px}
+.kpi .v{font-size:28px;font-weight:600;letter-spacing:-.02em}.kpi .l{color:var(--ink2);font-size:12px}.kpi .s{color:var(--muted);font-size:11px;margin-top:2px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--grid);text-align:left;vertical-align:top}
+th{color:var(--ink2);font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.tot td{font-weight:600;border-top:2px solid var(--axis)}
+.tw{overflow:auto;max-height:560px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--border)}
+.sev-HIGH{color:var(--crit)}.sev-MEDIUM{color:var(--ink)}.sev-INFO{color:var(--ink2)}
+svg text{fill:var(--muted);font-size:11px}svg .grid{stroke:var(--grid)}svg .axis{stroke:var(--axis)}
+#tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--axis);border-radius:8px;padding:6px 10px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;z-index:20;max-width:320px;white-space:pre-line}
+input[type=search],select,input[type=number]{font:inherit;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+label.f{display:flex;flex-direction:column;font-size:11px;color:var(--ink2);gap:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:6px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}
+.warn{border-left:4px solid var(--crit);padding-left:10px}.hidden{display:none}
+.callout{background:var(--ghost);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink2)}
+</style></head><body>
+<header><div class="top"><div><h1>B2B Flow Commercial Dashboard</h1>
+<div class="sub">Flows, enrollment, warm leads and B2B sales &middot; data Oct 31 &ndash; Nov 4 2026 &middot; Klaviyo + BigQuery &middot; as of Nov 4 2026</div></div>
+<div class="row"><button class="btn" id="theme">Dark / light</button></div></div>
+<nav id="tabs" role="tablist"></nav></header>
+<main id="main"></main><div id="tip"></div>
+<script>
+const D=__D__;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const money=(v,d=0)=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=1)=>(v*100).toFixed(d)+'%', num=v=>Number(v).toLocaleString('en-US');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const st={tab:'Flows',sel:new Set(D.flows.map(f=>f.id)),grain:'Day',topFrom:0,topTo:D.top.length-1,lq:'',tier:'All',rec:'All',minLtv:0,minOrders:0,sort:{k:'ltv',d:-1},limit:50};
+const TABS=['Flows','New enrollees','Warm leads','B2B sales'];
+const flowOf=id=>D.flows.find(f=>f.id===id);
+function chips(){return; $('#chips').innerHTML=D.flows.map(f=>`<button class="chip" data-f="${f.id}" aria-pressed="${st.sel.has(f.id)}"><span class="dot" style="background:var(${f.c})"></span>${esc(f.short)}</button>`).join('');}
+if($('#chips'))$('#chips').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;const id=b.dataset.f;st.sel.has(id)?st.sel.delete(id):st.sel.add(id);if(!st.sel.size)st.sel.add(id);chips();render();};
+$('#tabs').innerHTML=TABS.map(t=>`<button role="tab" data-t="${t}">${t}</button>`).join('');
+$('#tabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b){st.tab=b.dataset.t;render();}};
+$('#theme').onclick=()=>{const r=document.documentElement;const dark=(r.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'))==='dark';r.dataset.theme=dark?'light':'dark';render();};
+// tooltip
+const tip=$('#tip');
+document.addEventListener('mousemove',e=>{const t=e.target.closest('[data-tip]');if(!t){tip.style.display='none';return;}tip.textContent=t.dataset.tip;tip.style.display='block';
+ const w=tip.offsetWidth,h=tip.offsetHeight;tip.style.left=Math.min(innerWidth-w-8,e.clientX+14)+'px';tip.style.top=Math.min(innerHeight-h-8,e.clientY+14)+'px';});
+// aggregates
+const agg=ids=>{const rows=D.msgs.filter(m=>ids.has(m.f));const s=k=>rows.reduce((a,m)=>a+m[k],0);
+ const o={rec:s('rec'),del:s('del'),opens:s('opens'),clicks:s('clicks'),conv:s('conv'),rev:s('rev'),unsub:s('unsub'),bounced:s('bounced'),spam:s('spam')};
+ const r=(a,b)=>b?a/b:0;return Object.assign(o,{open:r(o.opens,o.del),click:r(o.clicks,o.del),ctor:r(o.clicks,o.opens),cvr:r(o.conv,o.rec),aov:r(o.rev,o.conv),rpr:r(o.rev,o.rec),unr:r(o.unsub,o.del),bnr:r(o.bounced,o.rec),spr:r(o.spam,o.del),dlr:r(o.del,o.rec)});};
+// charts
+function axisY(max,H,pad,fmt,W,n=4){let s='';for(let i=0;i<=n;i++){const v=max*i/n,y=H-pad.b-(H-pad.t-pad.b)*i/n;s+=`<line class="grid" x1="${pad.l}" x2="${W-pad.r}" y1="${y}" y2="${y}"/><text x="${pad.l-6}" y="${y+4}" text-anchor="end">${fmt(v)}</text>`;}return s;}
+function niceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const m=v/p;return ([1,1.2,1.5,2,2.5,3,4,5,6,8,10].find(x=>m<=x))*p;}
+function barChart(cats,series,fmt,H=240){ // stacked, 2px gaps, rounded top
+ const W=560,pad={l:60,r:10,t:10,b:26};const totals=cats.map((c,i)=>series.reduce((a,s)=>a+s.v[i],0));const max=niceMax(Math.max(...totals,1));
+ const bw=Math.min(56,(W-pad.l-pad.r)/cats.length*0.6),step=(W-pad.l-pad.r)/cats.length;let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">`+axisY(max,H,pad,fmt,W);
+ cats.forEach((c,i)=>{const x=pad.l+step*i+(step-bw)/2;let y0=H-pad.b;const act=series.filter(s=>s.v[i]>0);
+  act.forEach((s,k)=>{const h=(H-pad.t-pad.b)*s.v[i]/max;const top=k===act.length-1;const yy=y0-h;
+   const tip=`${c}\n${s.name}: ${fmt(s.v[i])}`;
+   svg+=top?`<path d="M${x} ${y0}V${yy+4}a4 4 0 0 1 4-4h${bw-8}a4 4 0 0 1 4 4V${y0}Z" fill="var(${s.c})" data-tip="${esc(tip)}"/>`:`<rect x="${x}" y="${yy}" width="${bw}" height="${h}" fill="var(${s.c})" data-tip="${esc(tip)}"/>`;
+   y0=yy-2;});
+  svg+=`<text x="${x+bw/2}" y="${H-8}" text-anchor="middle">${esc(c)}</text>`;});
+ return svg+`<line class="axis" x1="${pad.l}" x2="${W-pad.r}" y1="${H-pad.b}" y2="${H-pad.b}"/></svg>`;}
+function lineChart(id,cats,series,fmt,H=230){const W=560,pad={l:74,r:14,t:10,b:26};const all=series.flatMap(s=>s.v);const max=niceMax(Math.max(...all,1));
+ const X=i=>pad.l+(cats.length>1?(W-pad.l-pad.r)*i/(cats.length-1):(W-pad.l-pad.r)/2),Y=v=>H-pad.b-(H-pad.t-pad.b)*v/max;
+ let svg=`<svg id="${id}" viewBox="0 0 ${W} ${H}" width="100%" role="img">`+axisY(max,H,pad,fmt,W);
+ cats.forEach((c,i)=>svg+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle">${esc(c)}</text>`);
+ series.forEach(s=>{svg+=`<path d="${s.v.map((v,i)=>(i?'L':'M')+X(i)+' '+Y(v)).join('')}" fill="none" stroke="var(${s.c})" stroke-width="2" stroke-linejoin="round"/>`;
+  s.v.forEach((v,i)=>svg+=`<circle cx="${X(i)}" cy="${Y(v)}" r="4" fill="var(${s.c})" stroke="var(--surface)" stroke-width="2"/>`);});
+ // hover bands
+ cats.forEach((c,i)=>{const w=(W-pad.l-pad.r)/Math.max(cats.length,1);const tipt=c+'\n'+series.map(s=>s.name+': '+fmt(s.v[i])).join('\n');
+  svg+=`<rect x="${X(i)-w/2}" y="${pad.t}" width="${w}" height="${H-pad.t-pad.b}" fill="transparent" data-tip="${esc(tipt)}"/>`;});
+ return svg+`<line class="axis" x1="${pad.l}" x2="${W-pad.r}" y1="${H-pad.b}" y2="${H-pad.b}"/></svg>`;}
+function hbars(items,fmt,lw,vw){const max=Math.max(...items.map(i=>i.v),1);return items.map((it,k)=>{const w=Math.max(it.v/max*100,it.v>0?1:0);
+ return `<div style="display:grid;grid-template-columns:${lw||110}px 1fr ${vw||90}px;gap:8px;align-items:center;margin:4px 0" data-tip="${esc(it.name+': '+fmt(it.v)+(it.note?'\n'+it.note:''))}"><span style="color:var(--ink2);font-size:12px">${it.name}</span><div style="background:var(--ghost);border-radius:0 4px 4px 0;height:18px"><div style="width:${w}%;height:100%;background:var(--seq${it.s});border-radius:0 4px 4px 0"></div></div><span style="font-variant-numeric:tabular-nums;font-size:12px;text-align:right">${fmt(it.v)}${it.note?' <span style=\'color:var(--muted)\'>'+it.note+'</span>':''}</span></div>`}).join('');}
+const kpi=(l,v,s='')=>`<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+function table(cols,rows,opts={}){return `<div class="tw"><table><thead><tr>${cols.map(c=>`<th class="${c.n?'n':''}" ${opts.sortable?`data-sort="${c.k}"`:''}>${c.h}${opts.sort&&opts.sort.k===c.k?(opts.sort.d>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;}
+// views
+const V={};
+V['Overview']=()=>{const a=agg(st.sel);const t=D.top;const us=t.reduce((x,r)=>x+r.net,0),ord=t.reduce((x,r)=>x+r.orders,0);
+ const share=us?a.rev/us:0;
+ const fun=[{name:'Recipients',v:a.rec,s:5},{name:'Delivered',v:a.del,s:4},{name:'Opened',v:a.opens,s:3,note:pct(a.open)},{name:'Clicked',v:a.clicks,s:2,note:pct(a.click)},{name:'Ordered',v:a.conv,s:1,note:pct(a.cvr,2)}];
+ const high=D.issues.filter(i=>i.sev==='HIGH');
+ return `<div class="grid g4">${kpi('Leads reached (recipients)',num(a.rec),'selected flows')+kpi('Open rate',pct(a.open),num(a.opens)+' unique opens')+kpi('Conversion rate',pct(a.cvr,2),num(a.conv)+(a.conv===1?' order':' orders')+' / recipients')+kpi('B2B cohort net sales (core)',money(D.cohort.reduce((x,r)=>x+r.core.net,0)),pct(D.cohort.reduce((x,r)=>x+r.core.net,0)/us)+' of US net sales · see B2B sales tracker')}</div>
+ <div class="grid g2" style="margin-top:16px"><div class="card"><h2>Funnel</h2><div class="note">Selected flows, Oct 31 – Nov 4. Hover a bar for the exact figure.</div>${hbars(fun,num)}</div>
+ <div class="card warn"><h2>Needs attention (${high.length} high severity)</h2><div class="note">From the Flow health tab</div>${high.map(i=>`<div style="margin:8px 0"><b class="sev-HIGH">▲ HIGH</b> &middot; ${esc(i.flow)}<br><span style="color:var(--ink2)">${esc(i.issue)}</span></div>`).join('')}</div></div>
+ <div class="grid g2" style="margin-top:16px"><div class="card"><h2>US net sales by day</h2><div class="note">BigQuery net_sales_bookings, USD</div>${lineChart('l1',t.map(r=>r.d.slice(5)),[{name:'US net sales',c:'--s1',v:t.map(r=>r.net)}],v=>money(v))}</div>
+ <div class="card"><h2>Recipients by flow</h2><div class="note">Everything was sent on Nov 4 (initial send to existing members)</div>${barChart(['Nov 4'],D.flows.filter(f=>st.sel.has(f.id)).map(f=>({name:f.short,c:f.c,v:[D.msgs.filter(m=>m.f===f.id).reduce((x,m)=>x+m.rec,0)]})),num)}<div class="legend">${D.flows.filter(f=>st.sel.has(f.id)).map(f=>`<span><i style="background:var(${f.c})"></i>${esc(f.short)}</span>`).join('')}</div></div></div>
+ <p class="sub" style="margin-top:12px">Under one day of sends: rates are directional only. Revenue is Klaviyo-attributed gross order value, not net of refunds.</p>`;};
+V['Flow performance']=()=>{const ids=[...st.sel];const rows=ids.map(id=>{const a=agg(new Set([id]));const f=flowOf(id);return {f,a}});const tot=agg(st.sel);
+ const cols=[['Flow',0],['Recipients',1],['Delivered',1],['Open rate',1],['Click rate',1],['CTOR',1],['Orders',1],['CVR',1],['Revenue',1],['AOV',1],['Rev / recipient',1],['Unsub',1],['Bounce',1],['Spam',1]].map(([h,n])=>({h,n}));
+ const line=(name,a,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="n">${num(a.rec)}</td><td class="n">${num(a.del)}</td><td class="n">${pct(a.open)}</td><td class="n">${pct(a.click)}</td><td class="n">${pct(a.ctor)}</td><td class="n">${num(a.conv)}</td><td class="n">${pct(a.cvr,2)}</td><td class="n">${money(a.rev,2)}</td><td class="n">${money(a.aov,2)}</td><td class="n">${money(a.rpr,2)}</td><td class="n">${pct(a.unr,2)}</td><td class="n">${pct(a.bnr,2)}</td><td class="n">${pct(a.spr,2)}</td></tr>`;
+ const mrows=D.msgs.filter(m=>st.sel.has(m.f));
+ return `<div class="card"><h2>Individual and consolidated</h2><div class="note">Use the flow toggles at the top of the page to include or exclude flows.</div>${table(cols,rows.map(r=>line(`<span class="dot" style="background:var(${r.f.c})"></span> ${esc(r.f.name)} <span style="color:var(--muted)">(${r.f.id})</span>`,r.a)).join('')+line('Consolidated',tot,'tot'))}</div>
+ <div class="card" style="margin-top:16px"><h2>Message level</h2>${table([{h:'Flow'},{h:'Message'},{h:'Recipients',n:1},{h:'Delivered',n:1},{h:'Opens',n:1},{h:'Clicks',n:1},{h:'Orders',n:1},{h:'Revenue',n:1}],mrows.map(m=>`<tr><td>${esc(flowOf(m.f).short)}</td><td>${esc(m.m)}</td><td class="n">${num(m.rec)}</td><td class="n">${num(m.del)}</td><td class="n">${num(m.opens)}</td><td class="n">${num(m.clicks)}</td><td class="n">${num(m.conv)}</td><td class="n">${money(m.rev,2)}</td></tr>`).join(''))}</div>`;};
+V['Flow health']=()=>{const sev=st.sevF||'All';const list=D.issues.filter(i=>sev==='All'||i.sev===sev);
+ return `<div class="row" style="margin-bottom:12px">${['All','HIGH','MEDIUM','INFO'].map(s=>`<button class="chip" data-sev="${s}" aria-pressed="${s===sev}">${s}</button>`).join('')}<span class="sub">${list.length} items</span></div>
+ <div class="grid">${list.map(i=>`<div class="card ${i.sev==='HIGH'?'warn':''}"><div class="row"><span class="badge sev-${i.sev}">${i.sev==='HIGH'?'▲':i.sev==='MEDIUM'?'●':'ℹ'} ${i.sev}</span><b>${esc(i.flow)}</b></div><h2 style="margin-top:8px">${esc(i.issue)}</h2><div style="color:var(--ink2)">${esc(i.evidence)}</div><div style="margin-top:6px"><b>Action:</b> ${esc(i.action)}</div></div>`).join('')}</div>`;};
+V['New enrollees']=()=>{const g=st.grain;const cats=[],map={};D.enr.forEach(r=>{const dt=new Date(r.d+'T00:00:00');let k=r.d;if(g==='Week'){const wd=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-wd);k=dt.toISOString().slice(0,10);}if(g==='Month')k=r.d.slice(0,7);
+  if(!map[k]){map[k]={};cats.push(k);}D.flows.forEach(f=>map[k][f.id]=(map[k][f.id]||0)+r[f.id]);});
+ const fl=D.flows.filter(f=>st.sel.has(f.id));const series=fl.map(f=>({name:f.short,c:f.c,v:cats.map(k=>map[k][f.id])}));const total=series.reduce((a,s)=>a+s.v.reduce((x,y)=>x+y,0),0);
+ const lab=cats.map(c=>g==='Day'?c.slice(5):g==='Week'?'Wk '+c.slice(5):c);
+ return `<div class="row" style="margin-bottom:12px">${['Day','Week','Month'].map(s=>`<button class="chip" data-grain="${s}" aria-pressed="${s===g}">${s}</button>`).join('')}</div>
+ <div class="grid g2"><div class="card"><h2>New people entering selected flows (${g.toLowerCase()})</h2><div class="note">First-email recipients, US/Arizona dates. Total: ${num(total)}</div>${barChart(lab,series,num)}<div class="legend">${fl.map(f=>`<span><i style="background:var(${f.c})"></i>${esc(f.short)}</span>`).join('')}</div></div>
+ <div class="card"><h2>Table</h2>${table([{h:'Period'}].concat(fl.map(f=>({h:f.short,n:1}))).concat([{h:'Total',n:1}]),cats.map((c,i)=>`<tr><td>${c}</td>${series.map(s=>`<td class="n">${num(s.v[i])}</td>`).join('')}<td class="n"><b>${num(series.reduce((a,s)=>a+s.v[i],0))}</b></td></tr>`).join(''))}</div></div>
+ <p class="sub" style="margin-top:12px">All four flows went live Nov 2–4; the Nov 4 spike is the initial send to existing list members, not organic daily growth. Klaviyo account-wide "Added to List" (not B2B-specific): 17 / 25 / 10 / 12 / 9 per day Oct 31 – Nov 4.</p>`;};
+V['Coupons']=()=>`<div class="callout" style="margin-bottom:12px">All five live-flow email templates carry a coupon tag (100% attachment). Counts are lower bounds (one 100-code page per status). Klaviyo shows USED = 0 for every coupon, so redemption isn't syncing; use Shopify/BigQuery for true redemption.</div>
+ <div class="card">${table([{h:'Coupon'},{h:'In live flow?'},{h:'Validity'},{h:'Status'},{h:'Unassigned',n:1},{h:'Assigned',n:1},{h:'Used',n:1}],D.coupons.map(c=>`<tr><td><b>${esc(c.n)}</b></td><td>${esc(c.use)}</td><td>${esc(c.v)}</td><td><span class="badge" style="color:${c.s==='Expired'?'var(--crit)':'var(--ink)'}">${c.s==='Expired'?'▲ ':''}${c.s}</span></td><td class="n" style="${c.low?'color:var(--crit);font-weight:700':''}">${c.un}${c.low?' ▲ low':''}</td><td class="n">${c.as}</td><td class="n">${c.us}</td></tr>`).join(''))}</div>
+ <p class="sub" style="margin-top:12px">Account-wide Klaviyo coupons assigned Oct 31–Nov 4: 4,961 / 4,255 / 3,553 / 12,206 / 16,336. Used: 76 / 135 / 131 / 75 / 79 (not attributable to B2B flows via the API).</p>`;
+const AS_OF=new Date(D.meta.asof);
+const lead=l=>{const dsl=Math.round((AS_OF-new Date(l.last))/864e5);return Object.assign({},l,{dsl,tierA:l.orders>=3&&l.aov>=600,tierB:l.max>=2000,rec:dsl<=90?'Active (<90d)':dsl<=365?'Lapsing (90–365d)':'Lapsed (>365d)'});};
+const LEADS=D.leads.map(lead);
+const seg=l=>l.tierA&&l.tierB?'A+B':l.tierA?'A':l.tierB?'B':'';
+function leadsFiltered(){const q=st.lq.toLowerCase();let r=LEADS.filter(l=>(st.tier==='All'||seg(l)===st.tier||(st.tier==='A'&&seg(l)==='A+B')||(st.tier==='B'&&seg(l)==='A+B'))&&(st.rec==='All'||l.rec.startsWith(st.rec))&&l.ltv>=st.minLtv&&l.orders>=st.minOrders&&(!q||(l.email+l.fn+l.ln+l.city+l.st).toLowerCase().includes(q)));
+ const k=st.sort.k,d=st.sort.d;r.sort((a,b)=>(a[k]>b[k]?1:a[k]<b[k]?-1:0)*d);return r;}
+function scatter(rows){const W=560,H=300,pad={l:70,r:20,t:14,b:34};const lx=v=>Math.log10(v),xs=rows.map(r=>r.orders),ys=rows.map(r=>r.aov);
+ if(!rows.length)return '<div class="note">No leads match.</div>';const xmin=-0.08,xmax=Math.log10(Math.max(...xs,10)),ymin=Math.log10(Math.max(100,Math.min(...ys)/1.2)),ymax=Math.log10(Math.max(...ys)*1.2);
+ const X=v=>pad.l+(W-pad.l-pad.r)*(lx(v)-xmin)/(xmax-xmin||1),Y=v=>H-pad.b-(H-pad.t-pad.b)*(lx(v)-ymin)/(ymax-ymin||1);let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:760px" role="img">`;
+ [100,300,1000,3000,10000].filter(v=>lx(v)>=ymin&&lx(v)<=ymax).forEach(v=>s+=`<line class="grid" x1="${pad.l}" x2="${W-pad.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${pad.l-6}" y="${Y(v)+4}" text-anchor="end">${money(v)}</text>`);
+ [1,2,3,5,10,20,50,100].filter(v=>lx(v)<=xmax).forEach(v=>s+=`<text x="${X(v)}" y="${H-18}" text-anchor="middle">${v}</text>`);
+ s+=`<text x="${W/2}" y="${H-3}" text-anchor="middle">Orders (log scale)</text><text x="10" y="${H/2}" transform="rotate(-90 10 ${H/2})" text-anchor="middle">Average order value (log)</text>`;
+ const col={A:'--s1',B:'--s2','A+B':'--s3'};rows.forEach(r=>{const sg=seg(r)||'A';s+=`<circle cx="${X(r.orders)}" cy="${Y(r.aov)}" r="5" fill="var(${col[sg]})" stroke="var(--surface)" stroke-width="2" data-tip="${esc(r.fn+' '+r.ln+' · '+r.email+'\n'+r.orders+' orders · AOV '+money(r.aov)+'\nLTV '+money(r.ltv)+' · largest '+money(r.max)+'\nLast order '+r.last+' ('+r.rec+')')}"/>`;});
+ return s+`<line class="axis" x1="${pad.l}" x2="${W-pad.r}" y1="${H-pad.b}" y2="${H-pad.b}"/></svg><div class="legend"><span><i style="background:var(--s1)"></i>Tier A repeat + high AOV</span><span><i style="background:var(--s2)"></i>Tier B $2k+ order</span><span><i style="background:var(--s3)"></i>A + B</span></div>`;}
+V['Warm leads']=()=>{const r=leadsFiltered();const ltv=r.reduce((a,l)=>a+l.ltv,0);const lapsing=r.filter(l=>l.dsl>90).length;
+ const sel=(id,opts,cur)=>`<select id="${id}">${opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('')}</select>`;
+ return `<div class="row" style="margin-bottom:12px;align-items:flex-end">
+ <label class="f">Search<input type="search" id="lq" value="${esc(st.lq)}" placeholder="email, name, city, state"></label>
+ <label class="f">Tier${sel('tier',['All','A','B','A+B'],st.tier)}</label>
+ <label class="f">Recency${sel('rec',['All','Active','Lapsing','Lapsed'],st.rec)}</label>
+ <label class="f">Min LTV ($)<input type="number" id="minLtv" value="${st.minLtv}" style="width:110px" step="1000"></label>
+ <label class="f">Min orders<input type="number" id="minOrders" value="${st.minOrders}" style="width:90px"></label>
+ <button class="btn" id="csv">Export CSV</button></div>
+ <div class="grid g4">${kpi('Customers shown',num(r.length),'of '+LEADS.length+' (top 400 by LTV)')+kpi('Combined LTV',money(ltv),'net revenue since Nov 2023')+kpi('Lapsing / lapsed',num(lapsing),'no order in 90+ days: warmest to re-engage')+kpi('Avg AOV',money(r.length?r.reduce((a,l)=>a+l.aov,0)/r.length:0),'mean of customer AOVs')}</div>
+ <div class="grid" style="margin-top:16px"><div class="card"><h2>Orders vs AOV</h2><div class="note">Each dot is a customer. Hover for details.</div>${scatter(r)}</div>
+ <div class="card"><h2>Customers (${Math.min(st.limit,r.length)} of ${r.length})</h2>${table([{h:'Customer',k:'ln'},{h:'Orders',k:'orders',n:1},{h:'AOV',k:'aov',n:1},{h:'LTV',k:'ltv',n:1},{h:'Largest',k:'max',n:1},{h:'Last order',k:'last'},{h:'Days',k:'dsl',n:1},{h:'Tier'}],r.slice(0,st.limit).map(l=>`<tr><td>${esc(l.fn+' '+l.ln)}<br><span style="color:var(--muted)">${esc(l.email)} · ${esc(l.city)}, ${esc(l.st)}</span></td><td class="n">${l.orders}</td><td class="n">${money(l.aov)}</td><td class="n">${money(l.ltv)}</td><td class="n">${money(l.max)}</td><td>${l.last}</td><td class="n">${l.dsl}</td><td>${seg(l)}</td></tr>`).join(''),{sortable:1,sort:st.sort})}${r.length>st.limit?`<button class="btn" id="more" style="margin-top:8px">Show 50 more</button>`:''}</div></div>
+ <p class="sub" style="margin-top:12px">Tier A = 3+ orders and AOV ≥ $600; Tier B = at least one order ≥ $2,000 net. US, samples and zero-revenue orders excluded. These are order-history customers, not confirmed business accounts.</p>`;};
+V['trackerView']=()=>{const rows=D.top.slice(st.topFrom,st.topTo+1);const sum=k=>rows.reduce((a,r)=>a+r[k],0);const net=sum('net'),oi=sum('oi'),cost=sum('cost'),orders=sum('orders'),b2b=sum('b2b'),bo=sum('b2bo');const m=oi?(oi-cost)/oi:0;
+ const o=D.top.map((r,i)=>`<option value="${i}">${r.d}</option>`).join('');
+ return `<div class="row" style="margin-bottom:12px"><label class="f">From<select id="tf">${o}</select></label><label class="f">To<select id="tt">${o}</select></label></div>
+ <div class="grid g4">${kpi('US net sales',money(net),'net_sales_bookings, USD')+kpi('US orders (approx.)',num(orders),'excludes samples')+kpi('B2B-attributed sales',money(b2b,2),pct(net?b2b/net:0,3)+' of US net sales · '+bo+' order')+kpi('Est. product margin',pct(m),'product cost only; directional')}</div>
+ <div class="grid g2" style="margin-top:16px"><div class="card"><h2>US net sales vs gross sales</h2><div class="note">Daily, USD</div>${lineChart('l2',rows.map(r=>r.d.slice(5)),[{name:'Net sales',c:'--s1',v:rows.map(r=>r.net)},{name:'Gross sales',c:'--s2',v:rows.map(r=>r.gross)}],v=>money(v))}<div class="legend"><span><i style="background:var(--s1)"></i>Net sales</span><span><i style="background:var(--s2)"></i>Gross sales</span></div></div>
+ <div class="card"><h2>US orders</h2><div class="note">Daily, approximate</div>${barChart(rows.map(r=>r.d.slice(5)),[{name:'Orders',c:'--s1',v:rows.map(r=>r.orders)}],num)}</div>
+ <div class="card"><h2>Estimated product margin %</h2><div class="note">Net revenue less estimated product cost; cost on ~31–34% of lines</div>${lineChart('l3',rows.map(r=>r.d.slice(5)),[{name:'Est. product margin %',c:'--s3',v:rows.map(r=>(r.oi-r.cost)/r.oi*100)}],v=>v.toFixed(0)+'%')}</div>
+ <div class="card"><h2>Table</h2>${table([{h:'Date'},{h:'Net sales',n:1},{h:'Orders',n:1},{h:'Est. margin',n:1},{h:'B2B sales',n:1},{h:'B2B %',n:1}],rows.map(r=>`<tr><td>${r.d}</td><td class="n">${money(r.net)}</td><td class="n">${num(r.orders)}</td><td class="n">${pct((r.oi-r.cost)/r.oi)}</td><td class="n">${money(r.b2b,2)}</td><td class="n">${pct(r.b2b/r.net,3)}</td></tr>`).join(''))}</div></div>
+ <div class="callout" style="margin-top:16px">BigQuery has no B2B flag on orders, so true B2B sales and margin can't be isolated yet. B2B here = Klaviyo flow attribution (4 live flows). Provide a Shopify customer tag, trade discount-code list or trade email list to add a real B2B cohort. Margin: invoice cost covers 0–15% of recent lines, so estimated cost is used.</div>`;};
+function render(){document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===st.tab));
+ const keep=document.activeElement&&document.activeElement.id;$('#main').innerHTML=V[st.tab]();
+ if(st.tab==='B2B sales'){$('#tf').value=st.topFrom;$('#tt').value=st.topTo;}
+ if(keep&&$('#'+keep)){const e=$('#'+keep);e.focus();if(e.setSelectionRange&&e.type==='search')e.setSelectionRange(e.value.length,e.value.length);}}
+$('#main').addEventListener('input',e=>{const t=e.target;if(t.id==='lq'){st.lq=t.value;st.limit=50;render();}if(t.id==='minLtv'){st.minLtv=+t.value||0;render();}if(t.id==='minOrders'){st.minOrders=+t.value||0;render();}});
+$('#main').addEventListener('change',e=>{const t=e.target;if(t.id==='tier'){st.tier=t.value;render();}if(t.id==='rec'){st.rec=t.value;render();}
+ if(t.id==='tf'){st.topFrom=Math.min(+t.value,st.topTo);render();}if(t.id==='tt'){st.topTo=Math.max(+t.value,st.topFrom);render();}});
+$('#main').addEventListener('click',e=>{const t=e.target;let b;
+ if(b=t.closest('[data-sev]')){st.sevF=b.dataset.sev;render();}
+ if(b=t.closest('[data-grain]')){st.grain=b.dataset.grain;render();}
+ if(b=t.closest('[data-sort]')){const k=b.dataset.sort;st.sort=st.sort.k===k?{k,d:-st.sort.d}:{k,d:-1};render();}
+ if(t.id==='more'){st.limit+=50;render();}
+ if(t.id==='csv'){const r=leadsFiltered();const h=['email','first','last','phone','city','state','orders','ltv','aov','largest_order','first_order','last_order','days_since_last','tier','recency'];
+  const csv=[h.join(',')].concat(r.map(l=>[l.email,l.fn,l.ln,l.phone,l.city,l.st,l.orders,l.ltv,l.aov,l.max,l.first,l.last,l.dsl,seg(l),l.rec].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(','))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='warm_leads.csv';a.click();}});
+
+D.cohort=__COHORT__;
+V['trackerView']=()=>{const inc=!!st.ext;const rows=D.top.map((t,i)=>{const c=D.cohort[i];const o=c.core.o+(inc?c.ext.o:0),n=c.core.net+(inc?c.ext.net:0),k=c.core.cost+(inc?c.ext.cost:0);return {d:t.d,o,n,k,us:t.net,uso:t.orders,usm:(t.oi-t.cost)/t.oi,c:c.core}}).slice(st.topFrom,st.topTo+1);
+ const S=f=>rows.reduce((a,r)=>a+f(r),0);const n=S(r=>r.n),o=S(r=>r.o),k=S(r=>r.k),us=S(r=>r.us),uso=S(r=>r.uso);const m=n?(n-k)/n:0;
+ const usm=D.top.slice(st.topFrom,st.topTo+1).reduce((a,t)=>[a[0]+t.oi,a[1]+t.cost],[0,0]);const um=(usm[0]-usm[1])/usm[0];
+ const src=[['Klaviyo list member','nl','sl'],['Klaviyo segment member','ns','ss'],['Received trade/B2B flow email','nf','sf'],['Submitted trade/B2B form','nm','sm'],['Used trade/B2B coupon','nc','sc']];
+ const sidx=src.map(x=>({name:x[0],o:S(r=>r.c[x[1]]),v:S(r=>r.c[x[2]])}));
+ const oo=D.top.map((r,i)=>`<option value="${i}">${r.d}</option>`).join('');
+ const lab=rows.map(r=>r.d.slice(5));
+ return `<div class="row" style="margin-bottom:12px"><button class="chip" data-ext="0" aria-pressed="${!inc}">Core cohort</button><button class="chip" data-ext="1" aria-pressed="${inc}">Core + extended</button>
+ <label class="f">From<select id="tf">${oo}</select></label><label class="f">To<select id="tt">${oo}</select></label></div>
+ <div class="grid g4">${kpi('B2B cohort net sales',money(n),pct(us?n/us:0)+' of US net sales ('+money(us)+')')+kpi('B2B cohort orders',num(o),pct(uso?o/uso:0)+' of US orders (approx.)')+kpi('Avg order value',money(o?n/o:0),'US avg '+money(us/uso))+kpi('Est. product margin',pct(m),'US overall '+pct(um)+' · product cost only')}</div>
+ <div class="grid g2" style="margin-top:16px"><div class="card"><h2>B2B cohort net sales by day</h2><div class="note">US, USD. ${inc?'Core + extended':'Core'} cohort of buyers.</div>${lineChart('l4',lab,[{name:'B2B cohort net sales',c:'--s1',v:rows.map(r=>r.n)}],v=>money(v))}</div>
+ <div class="card"><h2>Share of US net sales</h2><div class="note">Daily B2B cohort net sales ÷ US net sales</div>${lineChart('l5',lab,[{name:'Share of US net sales %',c:'--s3',v:rows.map(r=>r.us?r.n/r.us*100:0)}],v=>v.toFixed(0)+'%')}</div>
+ <div class="card"><h2>By qualifying signal (core, overlapping)</h2><div class="note">A buyer can qualify on several signals, so these do not add up to the total.</div>${hbars(sidx.map(x=>({name:x.name,v:x.v,s:3,note:x.o+' orders'})),money,200,150)}</div>
+ <div class="card"><h2>Daily table</h2>${table([{h:'Date'},{h:'Orders',n:1},{h:'Net sales',n:1},{h:'% of US',n:1},{h:'Est. margin',n:1},{h:'US est. margin',n:1}],rows.map(r=>`<tr><td>${r.d}</td><td class="n">${r.o}</td><td class="n">${money(r.n)}</td><td class="n">${pct(r.us?r.n/r.us:0)}</td><td class="n">${pct(r.n?(r.n-r.k)/r.n:0)}</td><td class="n">${pct(r.usm)}</td></tr>`).join('')+`<tr class="tot"><td>Total</td><td class="n">${o}</td><td class="n">${money(n)}</td><td class="n">${pct(us?n/us:0)}</td><td class="n">${pct(m)}</td><td class="n">${pct(um)}</td></tr>`)}</div></div>
+ <div class="card" style="margin-top:16px"><h2>Who counts as B2B</h2><div class="note">Anyone who PLACED AN ORDER and is tied to commercial/trade through any of the signals below</div>
+ <table><tbody>
+ <tr><td><b>Lists</b></td><td>RArqFN Trade - Business Interest Only (3,134) · SuJXq5 B2B Masterlist (6,603) · XYuXP5 Commercial - Website RAQ (2,279) · S3uABq B2B Masterlist - Inactive (4,121) · TM29XF Commercial/B2B Internal Additions (660) · UeKxx2 Commercial/B2B Inquiries from Website (1,865) · UwUddt Old Commercial Inquiries (393)</td></tr>
+ <tr><td><b>Segments</b></td><td>UtP84e Trade TEC Results (1,404) · U2Z8YK Official B2B/Commercial Master List All (2,516) · VExknn Master List Can Receive Mktg (1,614) · Ycbxb4 Trade Membership Level (905) · R77LxD Trade Silver Tier (12) · Yb9xBp Trade Coupon Used Reissue (0) · UMxDa4 Old Commercial Inquiries (11)</td></tr>
+ <tr><td><b>Flows</b></td><td>Received an email from any of 15 Trade / Commercial / B2B flows (4 live, 11 draft), since Nov 2023</td></tr>
+ <tr><td><b>Sign-up forms</b></td><td>Submitted any of 8 forms: Shopify Trade Application, Shopify Commercial Inquiry, B2B Audience News Pop In, Trade Application, Commercial Inquiry, Invited Trade Pop Up, Trade Reminder Flyout, B2B President's Day sign-up</td></tr>
+ <tr><td><b>Coupons</b></td><td>Order used a discount code containing Trade, TRD or B2B (e.g. "Trade Discount", SBB2B10) plus CRTRA10, which I inferred to be a trade code. Only 5 core orders qualify this way.</td></tr>
+ <tr><td><b>Extended (toggle)</b></td><td>Rh4564 Potential B2B - Purchased 25+ Units (1,321) · VGrNiu "Do Not Use" CRM B2B Like Leads (9,025) · SmZ4HF B2B-Like Customers Not in Trade or Commercial (3,878) · XsSRLS 3DB Leads - Potential B2B (175). Inferred rather than enrolled, so kept separate.</td></tr>
+ <tr><td><b>Not included</b></td><td>Business Interest segments (12k and 12k) were too broad to treat as B2B.</td></tr></tbody></table></div>
+ <div class="callout" style="margin-top:16px">Method: Klaviyo Placed Order events matched by Shopify order name to BigQuery (US, Shopify, samples excluded). Net sales = net_sales_bookings; margin = net revenue minus estimated product cost (cost on only about a third of lines, so directional). List and segment membership is current membership, and flow-email and form signals are ever since Nov 2023, so some buyers were tagged B2B after their order. Klaviyo returned 386 qualifying order rows; 171 matched BigQuery (the rest are mostly $0 orders such as samples, plus orders outside the date window). Klaviyo day boundaries are UTC, so Nov 4 is partial.</div>`;};
+$('#main').addEventListener('click',e=>{const b=e.target.closest('[data-ext]');if(b){st.ext=b.dataset.ext==='1';render();}});
+
+const NA=__NA__;
+V['Flows']=()=>{const a=agg(st.sel);const fun=[{name:'Recipients',v:a.rec,s:5},{name:'Delivered',v:a.del,s:4},{name:'Opened',v:a.opens,s:3,note:pct(a.open)},{name:'Clicked',v:a.clicks,s:2,note:pct(a.click)},{name:'Ordered',v:a.conv,s:1,note:pct(a.cvr,2)}];
+ const chipsHtml=D.flows.map(f=>`<button class="chip" data-f="${f.id}" aria-pressed="${st.sel.has(f.id)}"><span class="dot" style="background:var(${f.c})"></span>${esc(f.short)}</button>`).join('');
+ const high=D.issues.filter(i=>i.sev==='HIGH');
+ return `<div class="row" style="margin-bottom:12px"><b>Flows</b>${chipsHtml}<span class="sub">Toggle flows to filter this page</span></div>
+ <div class="grid g4">${kpi('Leads reached (recipients)',num(a.rec),'selected flows')+kpi('Open rate',pct(a.open),num(a.opens)+' unique opens')+kpi('Conversion rate',pct(a.cvr,2),num(a.conv)+(a.conv===1?' order':' orders')+' / recipients')+kpi('Flow-attributed revenue',money(a.rev,2),'gross order value')}</div>
+ <div class="grid g2" style="margin-top:16px"><div class="card"><h2>Funnel</h2><div class="note">Selected flows, Oct 31 – Nov 4</div>${hbars(fun,num)}</div>
+ <div class="card warn"><h2>Needs attention (${high.length} high severity)</h2><div class="note">Full list in Flow health below</div>${high.map(i=>`<div style="margin:8px 0"><b class="sev-HIGH">▲ HIGH</b> &middot; ${esc(i.flow)}<br><span style="color:var(--ink2)">${esc(i.issue)}</span></div>`).join('')}</div></div>
+ <h2 style="margin:24px 0 8px">Performance by flow and message</h2>${V['Flow performance']()}
+ <h2 style="margin:24px 0 8px">Flow health</h2>${V['Flow health']()}
+ <p class="sub" style="margin-top:12px">Under one day of sends: rates are directional only. Revenue is Klaviyo-attributed gross order value, not net of refunds.</p>`;};
+V['B2B sales']=()=>{
+ const A=NA.attr,tot=A.total.v;const b2bF=A.flows.filter(f=>f.b2b),othF=A.flows.filter(f=>!f.b2b),b2bC=A.camps.filter(c=>c.b2b),othC=A.camps.filter(c=>!c.b2b);
+ const sum=l=>l.reduce((x,r)=>x+r.v,0),cnt=l=>l.reduce((x,r)=>x+r.o,0);
+ const groups=[{name:'Not attributed',v:A.none.v,o:A.none.o,s:2},{name:'Other flows',v:sum(othF),o:cnt(othF),s:3},{name:'Other campaigns',v:sum(othC),o:cnt(othC),s:4},{name:'B2B-named flows',v:sum(b2bF),o:cnt(b2bF),s:5},{name:'B2B campaigns',v:sum(b2bC),o:cnt(b2bC),s:5}];
+ const flowRows=(st.b2bOnly?b2bF:A.flows).map(f=>`<tr><td>${esc(f.n)}${f.b2b?' <span class="badge">B2B</span>':''}<br><span style="color:var(--muted)">${f.id}</span></td><td class="n">${f.o}</td><td class="n">${money(f.v)}</td><td class="n">${pct(f.v/tot)}</td></tr>`).join('');
+ const campRows=(st.b2bOnly?b2bC:A.camps).map(f=>`<tr><td>${esc(f.n)}${f.b2b?' <span class="badge">B2B</span>':''}</td><td class="n">${f.o}</td><td class="n">${money(f.v)}</td><td class="n">${pct(f.v/tot)}</td></tr>`).join('');
+ const sends=NA.sends.flows+NA.sends.camps;
+ const den={TRADE10:sends,TRADE15:NA.sends.camps,TRADE20:NA.sends.camps};const cpRows=NA.cp.map(c=>{const d=den[c.n];const att=d&&c.asg?c.asg/d:null;return `<tr><td><b>${c.n}</b></td><td>${esc(c.where)}</td><td class="n">${num(c.asg)}</td><td class="n">${att===null?'–':(att>=1?'~100%':pct(att))}</td><td class="n" style="${c.low?'color:var(--crit);font-weight:700':''}">${c.left}${c.left==='0'?' ▲ empty':(c.low?' ▲ low':'')}</td><td class="n">${c.used}</td><td class="n">${c.matched}</td></tr>`}).join('');
+ return V['trackerView']()+`
+ <h2 style="margin:28px 0 4px">Where B2B cohort sales come from</h2>
+ <div class="note" style="color:var(--ink2);margin-bottom:10px">Klaviyo's attribution for cohort orders (list, segment and flow-email signals), Oct 31 – Nov 5 UTC. This is Klaviyo order value, so totals differ from the BigQuery net sales above. ${num(A.total.o)} orders, ${money(tot)}.</div>
+ <div class="grid g2"><div class="card"><h2>Attribution split</h2><div class="note">Share of cohort order value</div>${hbars(groups.map(g=>({name:g.name,v:g.v,s:g.s,note:pct(g.v/tot,1)+' · '+g.o+(g.o===1?' order':' orders')})),money,170,200)}
+  <div class="callout" style="margin-top:10px">Only ${pct((sum(b2bF)+sum(b2bC))/tot)} of cohort order value is attributed to B2B-named flows or campaigns. Most B2B buyers convert through general marketing (cart abandonment, SMS welcome, promos) or with no email attribution.</div></div>
+ <div class="card"><h2>B2B email campaigns (Nov 4 sends)</h2><div class="note">Klaviyo campaign report, Placed Order conversions</div>${table([{h:'Campaign'},{h:'Sent',n:1},{h:'Open',n:1},{h:'Click',n:1},{h:'Orders',n:1},{h:'Revenue',n:1},{h:'Unsub',n:1}],NA.camp.map(c=>`<tr><td>${esc(c.n)}<br><span style="color:var(--muted)">${esc(c.aud)} · ${c.sent}</span></td><td class="n">${num(c.rec)}</td><td class="n">${pct(c.opens/c.dl)}</td><td class="n">${pct(c.clicks/c.dl,2)}</td><td class="n">${c.conv}</td><td class="n">${money(c.rev,2)}</td><td class="n">${c.unsub}</td></tr>`).join(''))}
+  <div class="note" style="margin-top:8px">Inactive Masterlist: 4,109 sent, 26% opens, 7 clicks, no orders, 8 unsubscribes. Active Masterlist: only 22 recipients, 1 order ($2,086). Earlier B2B campaigns (June–Aug) fall outside this window.</div></div></div>
+ <div class="row" style="margin:16px 0 8px"><button class="chip" data-b2bonly="0" aria-pressed="${!st.b2bOnly}">All flows & campaigns</button><button class="chip" data-b2bonly="1" aria-pressed="${!!st.b2bOnly}">B2B-named only</button></div>
+ <div class="grid g2"><div class="card"><h2>By flow</h2>${table([{h:'Flow'},{h:'Orders',n:1},{h:'Order value',n:1},{h:'% of cohort',n:1}],flowRows)}</div>
+ <div class="card"><h2>By email campaign</h2>${table([{h:'Campaign'},{h:'Orders',n:1},{h:'Order value',n:1},{h:'% of cohort',n:1}],campRows)}</div></div>
+ <h2 style="margin:28px 0 4px">B2B coupons: attachment and use</h2>
+ <div class="grid"><div class="card"><h2>Coupon attachment and redemption</h2><div class="note">Assigned = unique codes Klaviyo issued Oct 31 – Nov 4. Attachment = assigned ÷ emails that carry the coupon: TRADE10 over all ${num(sends)} B2B emails (${num(NA.sends.flows)} welcome-flow + ${num(NA.sends.camps)} Nov 4 Commercial campaign sends); TRADE15/20 over the ${num(NA.sends.camps)} campaign sends (inferred, since I did not open the campaign templates).</div>
+ ${table([{h:'Coupon'},{h:'Used in'},{h:'Assigned',n:1},{h:'Attachment',n:1},{h:'Codes left',n:1},{h:'Used (Klaviyo)',n:1},{h:'Orders matched',n:1}],cpRows)}</div>
+ <div class="card"><h2>What the coupon data shows</h2><ul style="margin:6px 0 0 18px;padding:0;color:var(--ink2)">
+ <li><b>Attachment is near 100%.</b> TRADE15 and TRADE20 were each assigned 4,141 times, close to the 4,131 campaign sends (my inference that the campaigns carry the tiered coupons; I did not open the campaign templates). TRADE10 was assigned 5,300 times.</li>
+ <li><b>Redemption: 0 so far.</b> No order's discount code matched a TRADE10/15/20 or Trade_TRD unique code, and Klaviyo shows 0 used. Codes were issued mostly on Nov 4, so it is early.</li>
+ <li><b>Code pools:</b> TRADE15 and TRADE20 have only 2 unassigned codes left, so the next send will run short. Top up before any further B2B send.</li>
+ <li><b>B2B-coded orders in the cohort:</b> 5 orders ($9,445 net sales) used a trade/B2B-style code ("Trade Discount", SBB2B10, CRTRA10): manual or other codes, not the flow's unique codes.</li>
+ <li><b>Flow recipients:</b> 10 of 26 orders from people who got a live B2B flow email used some discount code, mostly general codes (NEW45…, SMS-107…).</li>
+ <li><b>Expired B2B coupons:</b> 13 (B2BPRES250_B2B to B2BEASY50) all ended by May 2026; no recent assignments.</li></ul></div></div>`;};
+$('#main').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b){const id=b.dataset.f;st.sel.has(id)?st.sel.delete(id):st.sel.add(id);if(!st.sel.size)st.sel.add(id);render();}
+ const c=e.target.closest('[data-b2bonly]');if(c){st.b2bOnly=c.dataset.b2bonly==='1';render();}});
+
+chips();render();
+</script></body></html>
