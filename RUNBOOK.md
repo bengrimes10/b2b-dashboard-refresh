@@ -70,3 +70,4 @@ BigQuery on `order_items`, US, order_type='Order', since 36 months before today,
 
 ## Run log
 - 2026-11-04 test run: worked end to end. Fixes found: STRING_AGG unsupported; K-SQL mistyped a flow ID; CRTRA10 excluded from the coupon signal; stale narrative strings updated in the template.
+- 2026-11-05 scheduled run: worked. Added the Nov 5 (partial) day; fixed the header date replacement in build_dashboard.py (the header uses &ndash;); refreshed stale narrative strings. Note K-SQL cohort query sometimes defines the coupon flag per buyer rather than per order; same totals so far.
