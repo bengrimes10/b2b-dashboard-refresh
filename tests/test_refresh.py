@@ -20,11 +20,12 @@ class RefreshRules(unittest.TestCase):
                             "$extra": {"name": name}, "Discount Codes": codes}},
                            "relationships": {"profile": {"data": {"id": "profile-1"}}}}
 
-        flags, codes, eligible = refresh.order_flags(API(), None, None, {}, {}, {}, {},
-                                                       {"flow": {}, "form": {}})
+        flags, codes, eligible, details = refresh.order_flags(API(), None, None, {}, {}, {}, {},
+                                                               {"flow": {}, "form": {}})
         self.assertEqual(eligible, 3)
         self.assertEqual({x["order_name"] for x in flags}, {"US123457", "US123458"})
         self.assertEqual(len(codes), 3)
+        self.assertEqual(details["US123457"]["coupon"], "Trade Discount")
 
     def test_large_order_is_inside_core_and_big_only(self):
         dates = [date(2026, 10, 31)]
@@ -36,6 +37,10 @@ class RefreshRules(unittest.TestCase):
         core = refresh.build_cohort(rows, dates)[0]["core"]
         self.assertEqual((core["o"], core["nb"], core["nbo"]), (2, 2, 1))
         self.assertEqual(core["net"], 7000)
+
+    def test_verified_late_adjustment_is_accepted_but_new_drift_is_flagged(self):
+        self.assertEqual(refresh.check_checkpoint([{"d": "2026-11-08", "net": 287641.32}]), [])
+        self.assertEqual(len(refresh.check_checkpoint([{"d": "2026-11-08", "net": 270000}])), 1)
 
 
 if __name__ == "__main__":

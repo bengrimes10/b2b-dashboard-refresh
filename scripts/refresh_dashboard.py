@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 import json
 import os
@@ -24,6 +25,8 @@ from google.cloud import bigquery
 
 ROOT = Path(__file__).resolve().parent.parent
 START = date(2026, 10, 31)
+# Verified against BigQuery time travel at 2026-11-09 04:00 Phoenix. See docs/validation_2026-11-09.md.
+ACCEPTED_LATE_ADJUSTMENTS = {"2026-11-08": (300228.94, 287641.32)}
 PROJECT = "hd-global-analytics-platform"
 BILLING_PROJECT = os.getenv("BIGQUERY_PROJECT_ID", "db-project-30840")
 TZ = ZoneInfo("America/Phoenix")
@@ -39,6 +42,29 @@ FLOW_NAMES = {
     "SVNQ6Y": "B2B - Welcome Series",
     "RjvnXL": "B2B Masterlist - Re-Entry Flow",
 }
+LIST_NAMES = dict(zip(CORE_LISTS, [
+    "Trade - Business Interest Only", "B2B Masterlist", "Commercial - Website RAQ",
+    "B2B Masterlist - Inactive", "Commercial/B2B Internal Additions",
+    "Commercial/B2B Inquiries from Website", "Old Commercial Inquiries"]))
+SEGMENT_NAMES = dict(zip(CORE_SEGMENTS, [
+    "Trade TEC Results", "Official Master List (All)",
+    "Official Master List (Can Receive Mktg)", "Trade Membership Level",
+    "Trade Silver", "Trade Coupon Used Reissue", "Old Commercial Inquiries"]))
+FLOW_NAMES.update(dict(zip(FLOW_IDS[4:], [
+    "Trade Membership Assignment - First Upload from Listrak",
+    "Trade Membership Assignment - First Upload from Listrak (variant)",
+    "Trade - Initial Application Thanks + Membership Assignment",
+    "B2B-Like Customers - Invite to Trade/Commercial",
+    "Trade - New Tier Level - Silver",
+    "Trade Membership Assignment - First Upload from Listrak (variant)",
+    "Trade - Membership Level Communication", "Trade - TEC Accepted/Not Accepted",
+    "Trade - Coupon Used - Reissue New", "Old Commercial Inquiries",
+    "Commercial Pricing Inquiry"])))
+FORM_NAMES = dict(zip(FORMS, [
+    "Shopify - Trade Application Form", "Shopify - Commercial Inquiry Form",
+    "Invited Trade Pop Up", "Trade Reminder Flyout", "Trade Application Form",
+    "Commercial Inquiry Form", "B2B Audience - News Pop In",
+    "B2B - President's Day Extra 5% Off $750 Email Sign Up"]))
 STATISTICS = ["recipients", "delivered", "opens_unique", "clicks_unique",
               "conversion_uniques", "conversion_value", "unsubscribe_uniques",
               "bounced", "spam_complaints"]
@@ -58,6 +84,7 @@ def days_through(end: date):
 
 class Klaviyo:
     def __init__(self, key: str):
+        self.key = key
         self.session = requests.Session()
         self.session.headers.update({"Authorization": f"Klaviyo-API-Key {key}",
                                      "revision": "2026-10-15",
@@ -68,8 +95,9 @@ class Klaviyo:
         url = path if path.startswith("https://a.klaviyo.com/api/") else "https://a.klaviyo.com/api/" + path.lstrip("/")
         if urlparse(url).hostname != "a.klaviyo.com":
             raise ValueError("Unexpected Klaviyo pagination host")
+        request_timeout = kwargs.pop("timeout", 90)
         for attempt in range(6):
-            response = self.session.request(method, url, timeout=90, **kwargs)
+            response = self.session.request(method, url, timeout=request_timeout, **kwargs)
             if response.status_code in (429, 500, 502, 503, 504) and attempt < 5:
                 time.sleep(min(float(response.headers.get("Retry-After", 2 ** attempt)), 60))
                 continue
@@ -102,12 +130,27 @@ class Klaviyo:
             if not cursor:
                 raise RuntimeError("Klaviyo report pagination link has no cursor")
 
-    def events(self, metric: str, start: datetime, end: datetime):
-        filt = (f'and(equals(metric_id,"{metric}"),'
-                f'greater-or-equal(datetime,{start.isoformat()}),'
-                f'less-than(datetime,{end.isoformat()}))')
-        return self.pages("events", {"filter": filt, "page[size]": 1000,
-                                     "fields[event]": "datetime,event_properties", "sort": "datetime"})
+    def events(self, metric: str, start: datetime, end: datetime, property_name=None, property_value=None):
+        if property_name is not None:
+            if property_name not in ("$flow", "form_id"):
+                raise ValueError("Unsupported event property filter")
+        window_start = start
+        while window_start < end:
+            window_end = min(window_start + timedelta(days=360), end)
+            parts = [f'equals(metric_id,"{metric}")',
+                     f'greater-or-equal(datetime,{window_start.isoformat()})',
+                     f'less-than(datetime,{window_end.isoformat()})']
+            if property_name is not None:
+                parts.append(f'equals(properties.{property_name},{json.dumps(property_value)})')
+            filt = 'and(' + ','.join(parts) + ')'
+            fields = ("datetime" if property_name else
+                      "datetime,event_properties.$value,event_properties.$extra.name,"
+                      "event_properties.Discount Codes" if metric == "WvaquY" else
+                      "datetime,event_properties.CouponKey,event_properties.coupon_key")
+            yield from self.pages("events", {"filter": filt, "page[size]": 1000,
+                                             "fields[event]": fields,
+                                             "sort": "datetime"})
+            window_start = window_end
 
 
 def membership(api: Klaviyo, ids: list[str], kind: str):
@@ -119,21 +162,71 @@ def membership(api: Klaviyo, ids: list[str], kind: str):
     return found
 
 
+def all_memberships(api: Klaviyo):
+    cache_path = ROOT / "data/cache/memberships.json"
+    if cache_path.exists():
+        saved = json.loads(cache_path.read_text(encoding="utf-8"))
+        if datetime.now(timezone.utc) - datetime.fromisoformat(saved["created_at"]) < timedelta(hours=1):
+            print("Using recent local audience cache", flush=True)
+            return {group: {pid: set(ids) for pid, ids in members.items()}
+                    for group, members in saved["groups"].items()}
+    groups = {"core_lists": ("lists", CORE_LISTS),
+              "core_segments": ("segments", CORE_SEGMENTS),
+              "ext_lists": ("lists", EXT_LISTS),
+              "ext_segments": ("segments", EXT_SEGMENTS)}
+    tasks = [(group, kind, audience_id) for group, (kind, ids) in groups.items()
+             for audience_id in ids]
+
+    def fetch(task):
+        group, kind, audience_id = task
+        worker = Klaviyo(api.key)
+        members = {profile["id"] for profile in worker.pages(
+            f"{kind}/{audience_id}/profiles",
+            {"page[size]": 100, "fields[profile]": "id"})}
+        return group, audience_id, members
+
+    result = {group: defaultdict(set) for group in groups}
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for group, audience_id, members in pool.map(fetch, tasks):
+            for profile_id in members:
+                result[group][profile_id].add(audience_id)
+            print(f"Audience {group} {audience_id}: {len(members)} members", flush=True)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps({"created_at": datetime.now(timezone.utc).isoformat(),
+                                      "groups": {g: {p: sorted(ids) for p, ids in members.items()}
+                                                 for g, members in result.items()}},
+                                     separators=(",", ":")), encoding="utf-8")
+    return result
+
+
 def signal_cache(api: Klaviyo, now: datetime):
     path = ROOT / "data/cache/signals.json"
     cache = json.loads(path.read_text()) if path.exists() else {"flow": {}, "form": {}, "through": None}
     since = (datetime.fromisoformat(cache["through"]) - timedelta(hours=6)
              if cache.get("through") else datetime(2023, 11, 1, tzinfo=timezone.utc))
-    for metric, target in (("YiWaij", "flow"), ("XDVFye", "form"), ("Ts4RUD", "form")):
-        for event in api.events(metric, since, now):
+    tasks = [(metric, target, property_name, value)
+             for metric, target, property_name, values in (
+                 ("YiWaij", "flow", "$flow", FLOW_IDS),
+                 ("XDVFye", "form", "form_id", FORMS),
+                 ("Ts4RUD", "form", "form_id", FORMS)) for value in values]
+
+    def fetch(task):
+        metric, target, property_name, value = task
+        worker = Klaviyo(api.key)
+        profiles = set()
+        for event in worker.events(metric, since, now, property_name, value):
             profile = ((event.get("relationships") or {}).get("profile") or {}).get("data") or {}
-            pid = profile.get("id")
-            props = event.get("attributes", {}).get("event_properties") or {}
-            value = props.get("$flow") if target == "flow" else (props.get("form_id") or props.get("Form ID"))
-            if pid and value and value in (FLOW_IDS if target == "flow" else FORMS):
+            if profile.get("id"):
+                profiles.add(profile["id"])
+        return metric, target, value, profiles
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for metric, target, value, profiles in pool.map(fetch, tasks):
+            for pid in profiles:
                 cache[target].setdefault(pid, [])
                 if value not in cache[target][pid]:
                     cache[target][pid].append(value)
+            print(f"Signal {metric} {value}: {len(profiles)} profiles", flush=True)
     cache["through"] = now.isoformat()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache, separators=(",", ":")))
@@ -150,6 +243,7 @@ def code_strings(props: dict):
 def order_flags(api: Klaviyo, start: datetime, end: datetime, lists, segments, ext_lists, ext_segments, cache):
     flags = {}
     codes = defaultdict(list)
+    details = {}
     seen = eligible = 0
     for event in api.events("WvaquY", start, end):
         props = event.get("attributes", {}).get("event_properties") or {}
@@ -172,10 +266,22 @@ def order_flags(api: Klaviyo, start: datetime, end: datetime, lists, segments, e
             letters.add("c")
         if letters:
             flags.setdefault(name, set()).update(letters)
+            detail = details.setdefault(name, {"lists": set(), "segs": set(),
+                                               "flows": set(), "forms": set(), "coupon": ""})
+            detail["lists"].update(LIST_NAMES.get(x, x) for x in lists.get(pid, ()))
+            detail["segs"].update(SEGMENT_NAMES.get(x, x) for x in segments.get(pid, ()))
+            detail["flows"].update(FLOW_NAMES.get(x, x) for x in cache["flow"].get(pid, ()))
+            detail["forms"].update(FORM_NAMES.get(x, x) for x in cache["form"].get(pid, ()))
+            if "c" in letters:
+                detail["coupon"] = next((c for c in cs if re.search(r"trade|trd|b2b", c, re.I)
+                                           and c.upper() != "CRTRA10"), "")
         codes[name].extend(cs)
     if seen and eligible / seen < .9:
         raise RuntimeError(f"Only {eligible}/{seen} positive Klaviyo orders had US order names")
-    return [{"order_name": n, "fl": "".join(sorted(v))} for n, v in flags.items()], codes, eligible
+    private_details = {name: {key: sorted(value) if isinstance(value, set) else value
+                              for key, value in detail.items()} for name, detail in details.items()}
+    return ([{"order_name": n, "fl": "".join(sorted(v))} for n, v in flags.items()],
+            codes, eligible, private_details)
 
 
 def query(client, sql: str, end: date, flags=None):
@@ -279,7 +385,7 @@ def flow_report(api, live, end_dt):
     attrs = {"statistics": STATISTICS, "timeframe": {"start": "2026-10-31T00:00:00-07:00",
               "end": end_dt.isoformat()}, "conversion_metric_id": "WvaquY",
              "group_by": ["flow_id", "flow_message_id", "flow_message_name"],
-             "filter": 'contains-any(flow_id,' + json.dumps(list(live)) + ')'}
+             "filter": 'contains-any(flow_id,' + json.dumps(list(live), separators=(",", ":")) + ')'}
     rows = api.report("flow", attrs)
     msgs = []
     for row in rows:
@@ -299,7 +405,7 @@ def flow_report(api, live, end_dt):
 
 
 def live_flows(api):
-    items = api.pages("flows", {"filter": 'equals(status,"live")', "page[size]": 100,
+    items = api.pages("flows", {"filter": 'equals(status,"live")', "page[size]": 50,
                                  "fields[flow]": "name,status"})
     live = {x["id"]: x["attributes"]["name"] for x in items
             if re.search(r"trade|commercial|b2b", x["attributes"].get("name", ""), re.I)}
@@ -330,12 +436,12 @@ def enrollment(api, live, asof):
 def campaign_report(api, end_dt):
     attrs = {"statistics": STATISTICS, "timeframe": {"start": "2026-10-31T00:00:00-07:00",
               "end": end_dt.isoformat()}, "conversion_metric_id": "WvaquY",
-             "group_by": ["campaign_id", "campaign_message_id"]}
+             "group_by": ["campaign_id", "campaign_message_id", "campaign_message_name"]}
     result = []
     for row in api.report("campaign", attrs):
         details = row.get("campaign_details") or {}
         info = details.get("attributes") or {}
-        name = info.get("name", "")
+        name = info.get("name") or row.get("groupings", {}).get("campaign_message_name", "")
         if not re.search(r"trade|commercial|b2b", name, re.I):
             continue
         s = row["statistics"]
@@ -371,12 +477,16 @@ def coupon_report(api, start_dt, now, order_codes):
         matched = sum(any(c.upper().startswith(name.upper()) for c in codes)
                       for codes in order_codes.values())
         left = "Unknown"
-        coupon_id = coupons.get(name.upper())
+        coupon_id = coupons.get(name.upper()) or (name if name in ("TRADE10", "TRADE15", "TRADE20") else None)
         if coupon_id:
-            page = api.request("GET", f"coupons/{coupon_id}/coupon-codes",
-                               params={"filter": 'equals(status,"UNASSIGNED")',
-                                       "page[size]": 100, "fields[coupon-code]": "id"})
-            left = ">=100" if (page.get("links") or {}).get("next") else str(len(page.get("data", [])))
+            try:
+                page_size = 5 if name == "TRADE10" else 100
+                page = api.request("GET", "coupon-codes", timeout=12,
+                                   params={"filter": f'and(equals(coupon.id,"{coupon_id}"),equals(status,"UNASSIGNED"))',
+                                           "page[size]": page_size, "fields[coupon-code]": "id"})
+                left = f">={page_size}" if (page.get("links") or {}).get("next") else str(len(page.get("data", [])))
+            except (requests.RequestException, RuntimeError):
+                left = "Unknown"
         result.append({"n": name, "where": "Trade/B2B coupon", "asg": counts[name],
                        "left": left, "used": "Unknown", "matched": matched})
     return result
@@ -407,6 +517,10 @@ def check_checkpoint(top):
     changed = []
     for r in top:
         if r["d"] in original and original[r["d"]]:
+            accepted = ACCEPTED_LATE_ADJUSTMENTS.get(r["d"])
+            if (accepted and abs(original[r["d"]] - accepted[0]) < .01
+                    and abs(r["net"] / accepted[1] - 1) <= .01):
+                continue
             pct = 100 * (r["net"] / original[r["d"]] - 1)
             if abs(pct) > 1: changed.append((r["d"], original[r["d"]], r["net"], round(pct, 2)))
     return changed
@@ -415,6 +529,8 @@ def check_checkpoint(top):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint-only", action="store_true")
+    parser.add_argument("--preview-on-drift", action="store_true",
+                        help="Build a private validation preview without saving history when the checkpoint differs")
     parser.add_argument("--asof", type=date.fromisoformat)
     args = parser.parse_args()
     asof = args.asof or datetime.now(TZ).date()
@@ -424,8 +540,11 @@ def main():
             "orders": int(r["orders"] or 0), "oi": money(r["oi"]), "cost": money(r["cost"]),
             "b2b": 0, "b2bo": 0} for r in top_rows]
     changes = check_checkpoint(top)
+    print("Accepted Nov 8 late adjustment: original $300,228.94; new baseline $287,641.32")
     print("US sales checkpoint changes over 1%:", changes)
     if args.checkpoint_only: return 0
+    if not args.preview_on_drift and (ROOT / "data/history" / f"{asof.isoformat()}.json").exists():
+        raise RuntimeError("Today's metrics snapshot already exists; use --preview-on-drift for private validation")
     key = os.getenv("KLAVIYO_PRIVATE_API_KEY")
     if not key:
         try:
@@ -439,17 +558,19 @@ def main():
     live = live_flows(api)
     start_dt = datetime(2026, 10, 31, tzinfo=TZ).astimezone(timezone.utc)
     now = datetime.now(timezone.utc)
-    list_ids = membership(api, CORE_LISTS, "lists")
-    segment_ids = membership(api, CORE_SEGMENTS, "segments")
-    ext_list_ids = membership(api, EXT_LISTS, "lists")
-    ext_segment_ids = membership(api, EXT_SEGMENTS, "segments")
+    audiences = all_memberships(api)
+    list_ids, segment_ids = audiences["core_lists"], audiences["core_segments"]
+    ext_list_ids, ext_segment_ids = audiences["ext_lists"], audiences["ext_segments"]
     cache = signal_cache(api, now)
-    flags, codes, eligible = order_flags(api, start_dt, now, list_ids, segment_ids,
-                                         ext_list_ids, ext_segment_ids, cache)
+    flags, codes, eligible, details = order_flags(api, start_dt, now, list_ids, segment_ids,
+                                                  ext_list_ids, ext_segment_ids, cache)
+    print("Positive US order events", eligible, "flagged orders", len(flags), flush=True)
     dates = [date.fromisoformat(r["d"]) for r in top]
     cohort = build_cohort(query(client, COHORT_SQL, dates[-1], flags), dates)
+    print("BigQuery cohort matched", sum(x["core"]["o"] + x["ext"]["o"] for x in cohort), flush=True)
     big_rows = query(client, BIG_SQL, dates[-1], flags)
-    big = [{k: (money(v) if k == "net" else v) for k, v in row.items()} | {"det": {}}
+    big = [{k: (money(v) if k == "net" else v) for k, v in row.items()} |
+           {"det": details.get(row["o"], {})}
            for row in big_rows]
     leads_rows = query(client, LEADS_SQL, dates[-1])
     leads = [{"email": r["email"], "fn": r["fn"] or "", "ln": r["ln"] or "",
@@ -463,7 +584,7 @@ def main():
     coupons = coupon_report(api, start_dt, now, codes)
     issues = []
     for cp in coupons:
-        if cp["left"] == "0":
+        if cp["n"] in ("TRADE10", "TRADE15", "TRADE20") and cp["left"] == "0":
             issues.append({"sev": "HIGH", "flow": "B2B coupons", "issue": cp["n"] + " code pool empty",
                            "evidence": "No unassigned codes returned for this coupon.",
                            "action": "Top up the coupon pool before sending more email."})
@@ -492,19 +613,25 @@ def main():
             "NA": {"attr": None, "camp": camps, "cp": coupons,
                    "sends": {"flows": sum(x["rec"] for x in msgs),
                              "camps": sum(x["rec"] for x in camps)}}}
-    if changes:
+    if changes and not args.preview_on_drift:
         raise RuntimeError("Historical sales changed by more than 1%; checkpoint review required before publishing")
-    latest = ROOT / "data/latest.json"
+    latest = ROOT / ("out/validation_data.json" if args.preview_on_drift else "data/latest.json")
     latest.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    output = ROOT / "out/B2B_Dashboard.html"
+    output = ROOT / ("out/B2B_Dashboard_validation.html" if args.preview_on_drift else "out/B2B_Dashboard.html")
     subprocess.run([sys.executable, str(ROOT / "scripts/build_dashboard.py"), str(latest), str(output)],
                    check=True)
-    safe = json.loads(json.dumps(data))
-    safe["D"]["leads"] = []
-    safe["D"]["big"] = []
-    history = ROOT / "data/history" / f"{asof.isoformat()}.json"
-    history.write_text(json.dumps(safe, ensure_ascii=False), encoding="utf-8")
-    print("Private dashboard:", output, "metrics snapshot:", history)
+    if args.preview_on_drift:
+        print("Private validation preview only; no history snapshot or daily publication")
+    else:
+        safe = json.loads(json.dumps(data))
+        safe["D"]["leads"] = []
+        safe["D"]["big"] = []
+        history = ROOT / "data/history" / f"{asof.isoformat()}.json"
+        if history.exists():
+            raise RuntimeError(f"Metrics snapshot already exists; refusing to overwrite {history}")
+        history.write_text(json.dumps(safe, ensure_ascii=False), encoding="utf-8")
+        print("Metrics snapshot:", history)
+    print("Private dashboard:", output)
     return 0
 
 
