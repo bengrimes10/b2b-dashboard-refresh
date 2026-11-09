@@ -162,12 +162,104 @@ def td(value, numeric=False):
     return f'<td class="num">{escape(str(value))}</td>' if numeric else f'<td>{escape(str(value))}</td>'
 
 
-def table(headers, rows, empty="No matching records in this period."):
+def table(headers, rows, empty="No matching records in this period.", numeric_columns=()):
     if not rows:
         return f'<p class="empty">{escape(empty)}</p>'
     head = ''.join(f'<th>{escape(h)}</th>' for h in headers)
-    body = ''.join('<tr>' + ''.join(td(value, i > 0) for i, value in enumerate(row)) + '</tr>' for row in rows)
-    return f'<div class="table-wrap"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+    body = ''.join('<tr>' + ''.join(td(value, i in numeric_columns) for i, value in enumerate(row)) + '</tr>' for row in rows)
+    return f'<div class="tw"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def daily_chart(orders, start, end):
+    """Small SVG in the same blue line-chart style as the imported dashboard."""
+    daily = defaultdict(float)
+    for order in orders:
+        daily[order["d"]] += money(order["net"])
+    days = []
+    day = date.fromisoformat(start)
+    last = date.fromisoformat(end)
+    while day <= last:
+        days.append(day)
+        day += timedelta(days=1)
+    values = [daily[d.isoformat()] for d in days]
+    ceiling = max(values or [1]) * 1.12 or 1
+    left, right, top, bottom = 66, 620, 22, 204
+    step = (right - left) / max(len(days) - 1, 1)
+    xy = [(left + i * step, bottom - value / ceiling * (bottom - top))
+          for i, value in enumerate(values)]
+    guides = []
+    for fraction in (0, .5, 1):
+        y = bottom - fraction * (bottom - top)
+        guides.append(f'<line x1="{left}" x2="{right}" y1="{y:.1f}" y2="{y:.1f}" class="chart-grid"/>'
+                      f'<text x="{left-10}" y="{y+4:.1f}" text-anchor="end">${ceiling*fraction/1000:,.0f}k</text>')
+    label_step = 1 if len(days) <= 10 else 5
+    labels = ''.join(f'<text x="{x:.1f}" y="229" text-anchor="middle">{escape(d.strftime("%m-%d"))}</text>'
+                     for i, (d, (x, _)) in enumerate(zip(days, xy))
+                     if i == 0 or i == len(days)-1 or i % label_step == 0)
+    points = ' '.join(f'{x:.1f},{y:.1f}' for x, y in xy)
+    dots = ''.join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="var(--s1)"/>'
+                   for x, y in xy if len(days) <= 10)
+    return f'<svg class="sales-chart" viewBox="0 0 650 245" role="img" aria-label="Daily B2B net sales">{"".join(guides)}<polyline points="{points}" fill="none" stroke="var(--s1)" stroke-width="2.5" stroke-linejoin="round"/>{dots}{labels}</svg>'
+
+
+def signal_bars(orders):
+    rows = []
+    for label, predicate in (
+        ("Klaviyo list member", lambda o: "l" in o["fl"]),
+        ("Klaviyo segment member", lambda o: "s" in o["fl"]),
+        ("Received trade/B2B flow email", lambda o: "f" in o["fl"]),
+        ("Submitted trade/B2B form", lambda o: "m" in o["fl"]),
+        ("Used trade/B2B coupon", lambda o: "c" in o["fl"]),
+        ("Order of $3,000+", lambda o: o["is_big"]),
+        ("$3,000+ only (no other core signal)", lambda o: o["big_only"]),
+    ):
+        matches = [o for o in orders if predicate(o)]
+        rows.append((label, len(matches), sum(money(o["net"]) for o in matches)))
+    maximum = max((value for _, _, value in rows), default=1) or 1
+    return ''.join(f'<div class="barrow"><span class="barlabel">{escape(label)}</span>'
+                   f'<div class="track"><div class="fill" style="width:{max(0,value)/maximum*100:.1f}%"></div></div>'
+                   f'<span class="barvalue">{dollars(value)} <small>{count} orders</small></span></div>'
+                   for label, count, value in rows)
+
+
+STYLE = """
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s3:#1baf7a;--ghost:rgba(11,11,11,.05)}
+:root[data-theme=dark]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s3:#199e70;--ghost:rgba(255,255,255,.07)}
+@media(prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s3:#199e70;--ghost:rgba(255,255,255,.07)}}
+*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--border);padding:12px 24px}
+h1{font-size:18px;margin:0 0 2px}.sub{color:var(--ink2);font-size:12px}.top{display:flex;justify-content:space-between;gap:16px;align-items:start}
+nav{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}nav button,.btn{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer}
+nav button:hover,.btn:hover{background:var(--ghost)}nav button[aria-selected=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+main{padding:20px 24px;max-width:1300px;margin:auto}article[hidden]{display:none!important}.period-title{font-size:18px;margin:4px 0 16px}.eyebrow{color:var(--ink2);font-size:12px;margin-bottom:2px}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}.card h2{font-size:14px;margin:0 0 2px}.card .note,.note{color:var(--ink2);font-size:12px}.card .note{margin:2px 0 10px}
+.kpi .v{font-size:28px;font-weight:600;letter-spacing:-.02em}.kpi .l{color:var(--ink2);font-size:12px}.kpi .s{color:var(--muted);font-size:11px;margin-top:2px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--grid);text-align:left;vertical-align:top}
+th{color:var(--ink2);font-weight:600;font-size:12px;white-space:nowrap;position:sticky;top:0;background:var(--surface)}td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.tw{overflow:auto;max-height:560px}
+.empty{color:var(--muted);font-size:12px}.sales-chart{display:block;width:100%;height:auto;max-height:280px}.sales-chart text{fill:var(--muted);font-size:11px}.chart-grid{stroke:var(--grid)}
+.barrow{display:grid;grid-template-columns:175px minmax(60px,1fr) 128px;gap:8px;align-items:center;margin:5px 0;font-size:12px}.barlabel{color:var(--ink2)}.track{background:var(--ghost);height:18px;border-radius:0 4px 4px 0}.fill{height:100%;background:var(--s1);border-radius:0 4px 4px 0}.barvalue{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.barvalue small{color:var(--muted)}
+.callout{background:var(--ghost);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink2)}.footer{margin:16px 0 32px}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}.barrow{grid-template-columns:135px minmax(50px,1fr) 115px}}
+@media(max-width:560px){header{padding:10px 14px}main{padding:14px}.g4{grid-template-columns:1fr}.barrow{grid-template-columns:1fr 1fr}.barlabel{grid-column:1/-1}.barvalue{font-size:11px}}
+@media print{header{position:static}nav,.btn{display:none}article[hidden]{display:block!important}.card{break-inside:avoid}.tw{max-height:none}.grid{break-inside:auto}}
+"""
+
+
+SCRIPT = """
+const ids=['october','oct31_nov8'];
+function selectPeriod(id, updateHash=true){
+  if(!ids.includes(id)) id='october';
+  ids.forEach(key=>{document.getElementById('panel-'+key).hidden=key!==id;document.querySelector('[data-period="'+key+'"]').setAttribute('aria-selected',String(key===id));});
+  if(updateHash) history.replaceState(null,'','#'+id);
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>selectPeriod(b.dataset.period)));
+document.getElementById('theme').addEventListener('click',()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';});
+window.addEventListener('hashchange',()=>selectPeriod(location.hash.slice(1),false));
+selectPeriod(location.hash.slice(1),false);
+window.addEventListener('load',()=>window.scrollTo(0,0));
+"""
 
 
 def make_html(periods, generated_at):
@@ -179,26 +271,27 @@ def make_html(periods, generated_at):
         big_all = [o for o in orders if o["is_big"]]
         share = 100 * net / p["us_net"] if p["us_net"] else 0
         cards = [
-            ("B2B net sales", dollars(net)), ("B2B orders", f'{len(orders):,}'),
-            ("Share of US net", f'{share:.1f}%'),
-            ("$3k+ orders", f'{len(big_all):,} · {dollars(sum(money(o["net"]) for o in big_all))}'),
-            ("$3k+ without core signal", f'{len(big_only):,} · {dollars(sum(money(o["net"]) for o in big_only))}')]
-        card_html = ''.join(f'<div class="card"><span>{escape(label)}</span><strong>{escape(value)}</strong></div>'
-                            for label, value in cards)
+            ("B2B cohort net sales", dollars(net), f'{share:.1f}% of US net sales ({dollars(p["us_net"])})'),
+            ("B2B cohort orders", f'{len(orders):,}', f'{sum(money(o["net"]) == 0 for o in orders)} zero-net orders included'),
+            ("Orders of $3,000+", f'{len(big_all):,}', dollars(sum(money(o["net"]) for o in big_all)) + ' net sales'),
+            ("$3,000+ with no core signal", f'{len(big_only):,}', dollars(sum(money(o["net"]) for o in big_only)) + ' net sales')]
+        card_html = ''.join(f'<div class="card kpi"><div class="l">{escape(label)}</div><div class="v">{escape(value)}</div><div class="s">{escape(sub)}</div></div>'
+                            for label, value, sub in cards)
         breakdowns = []
         for kind, title in (("lists", "Lists"), ("segments", "Segments"),
                             ("flows", "Flows received"), ("forms", "Forms submitted"),
                             ("coupons", "Coupons used on order")):
             rows = [(x["name"], f'{x["orders"]:,}', dollars(x["sales"])) for x in p["groups"][kind]]
-            breakdowns.append(f'<section><h3>{title}</h3>' + table(["Signal", "Orders", "Associated net sales"], rows) + '</section>')
+            breakdowns.append(f'<section class="card"><h2>{title}</h2><div class="note">Orders may appear in multiple signal rows.</div>'
+                              + table(["Signal", "Orders", "Associated net sales"], rows, numeric_columns=(1, 2)) + '</section>')
         email_sections = []
         for kind, title in (("flow_emails", "Flow emails"), ("campaign_emails", "B2B campaign emails")):
             rows = [(f'{e["flow"]} · {e["name"]}' if kind == "flow_emails" else e["name"],
                      f'{e["recipients"]:,}', f'{e["conversions"]:,.1f}', dollars(e["klaviyo_value"]))
                     for e in p[kind]]
-            email_sections.append(f'<section><h3>{title}</h3>' + table(
+            email_sections.append(f'<section class="card"><h2>{title}</h2>' + table(
                 ["Email", "Recipients", "Klaviyo conversions", "Klaviyo attributed value"], rows,
-                "No matching B2B email report rows for this period.") + '</section>')
+                "No matching B2B email report rows for this period.", numeric_columns=(1, 2, 3)) + '</section>')
         top = []
         for rank, order in enumerate(orders[:25], 1):
             det = p["details"].get(order["order_name"]) or {}
@@ -210,19 +303,23 @@ def make_html(periods, generated_at):
             elif order["is_big"]: signals.append('$3k+')
             top.append((f'{rank:02d}', order["order_name"], order["d"], dollars(order["net"]),
                         ' • '.join(signals) or 'B2B signal'))
-        sections.append(f'''<article id="{p['id']}"><div class="eyebrow">{escape(p['start'])} through {escape(p['end'])}</div>
-          <h2>{escape(p['label'])}</h2><div class="cards">{card_html}</div>
-          <p class="note">Net sales are from BigQuery. {sum(money(o['net']) == 0 for o in orders)} zero-net orders are included in the order count but contribute no sales. The rows below show signals linked to B2B orders; one order may appear in several rows. Coupon rows combine one time codes by recognizable family; TRD* cannot be assigned to a verified coupon key.</p>
-          <div class="grid">{''.join(breakdowns)}</div>
-          <h3>Email performance</h3><p class="note">Klaviyo's attributed email value uses its own attribution and order-value rules. It is shown separately and must not be added to BigQuery B2B net sales.</p>
-          <div class="grid">{''.join(email_sections)}</div>
-          <section><h3>Top 25 B2B orders by net sales</h3>{table(['#', 'Order', 'Date', 'Net sales', 'Qualifying signals'], top)}</section></article>''')
+        sections.append(f'''<article id="panel-{p['id']}" role="tabpanel" hidden><div class="eyebrow">{escape(p['start'])} through {escape(p['end'])}</div>
+          <h2 class="period-title">{escape(p['label'])}</h2><div class="grid g4">{card_html}</div>
+          <div class="grid g2" style="margin-top:16px"><section class="card"><h2>B2B cohort net sales by day</h2><div class="note">US, USD · BigQuery net sales</div>{daily_chart(orders, p['start'], p['end'])}</section>
+          <section class="card"><h2>By qualifying signal (core, overlapping)</h2><div class="note">A buyer can qualify on several signals, so the bars do not add to the total.</div>{signal_bars(orders)}</section></div>
+          <div class="callout" style="margin-top:16px">Coupon rows below combine one time codes by recognizable family; TRD* cannot be assigned to a verified coupon key.</div>
+          <div class="grid g2" style="margin-top:16px">{''.join(breakdowns)}</div>
+          <div class="card" style="margin-top:16px"><h2>Email performance</h2><div class="note">Klaviyo attributed email value follows Klaviyo's own attribution and order-value rules. It is separate from BigQuery B2B net sales.</div></div>
+          <div class="grid g2" style="margin-top:16px">{''.join(email_sections)}</div>
+          <section class="card" style="margin-top:16px"><h2>Top 25 B2B orders by net sales</h2><div class="note">Biggest orders first; the qualifying signals explain why each order counts.</div>
+          {table(['#', 'Order', 'Date', 'Net sales', 'Qualifying signals'], top, numeric_columns=(0, 3))}</section></article>''')
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>B2B sales snapshot · October and Oct 31–Nov 8 2026</title>
-      <style>body{{margin:0;background:#f5f7f9;color:#172b3a;font:15px/1.5 Arial,sans-serif}}header{{background:#10384b;color:white;padding:32px max(28px,calc((100vw - 1200px)/2))}}header h1{{margin:0;font-size:32px}}header p{{max-width:900px;color:#d6e6ec}}main{{max-width:1200px;margin:auto;padding:28px}}nav a{{display:inline-block;margin:0 10px 8px 0;padding:10px 16px;background:#fff;border:1px solid #d5e0e6;border-radius:8px;color:#10384b;text-decoration:none;font-weight:bold}}article{{margin:24px 0 52px}}h2{{font-size:27px;margin:0 0 18px}}h3{{font-size:19px;margin:0 0 12px}}section{{background:#fff;border:1px solid #dbe4e8;border-radius:12px;padding:20px;margin:18px 0;min-width:0}}.eyebrow{{font-weight:bold;text-transform:uppercase;letter-spacing:.08em;color:#507084}}.cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px}}.card{{background:#fff;border:1px solid #dbe4e8;border-radius:12px;padding:16px}}.card span{{display:block;color:#567080;font-size:13px}}.card strong{{display:block;font-size:24px;margin-top:4px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:0 18px}}.table-wrap{{overflow-x:auto}}table{{border-collapse:collapse;width:100%;font-size:13px}}th{{background:#ecf3f6;text-align:left;color:#344d5c}}th,td{{padding:9px 10px;border-bottom:1px solid #e6edf0;vertical-align:top}}td.num{{text-align:right;white-space:nowrap}}.note{{color:#4f6573;max-width:1000px}}.empty{{color:#6c7f89}}footer{{margin-top:40px;padding:24px;border-top:1px solid #dbe4e8;color:#506876}}@media print{{body{{background:white}}nav{{display:none}}article{{break-before:page}}section,.card{{break-inside:avoid}}}}</style></head>
-      <body><header><h1>B2B sales snapshot</h1><p>Two requested views: October 1–31, 2026 and October 31–November 8, 2026. October 31 appears in both views by design. Generated {escape(generated_at)} America/Phoenix.</p></header>
-      <main><nav><a href="#october">October 2026</a><a href="#oct31_nov8">Oct 31–Nov 8</a></nav>{''.join(sections)}
-      <footer><strong>Definition and limits.</strong> US Shopify orders count as core B2B when the buyer is currently in a designated core list or segment, has ever received a designated Trade/Commercial/B2B flow email or submitted a designated form, used a trade/trd/b2b discount code (excluding CRTRA10), or the order's BigQuery net sales are at least $3,000. Extended-only memberships are excluded unless another core condition applies. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. No customer names, contact information, or addresses appear in this report.</footer></main></body></html>'''
+      <title>B2B sales snapshot · October and Oct 31–Nov 8 2026</title><style>{STYLE}</style></head>
+      <body><header><div class="top"><div><h1>B2B Sales Snapshot</h1><div class="sub">October 2026 and Oct 31 – Nov 8 2026 · Klaviyo + BigQuery · generated {escape(generated_at)} America/Phoenix</div></div>
+      <button class="btn" id="theme" type="button">Dark / light</button></div>
+      <nav role="tablist" aria-label="Reporting period"><button type="button" role="tab" data-period="october" aria-selected="true">October 2026</button><button type="button" role="tab" data-period="oct31_nov8" aria-selected="false">Oct 31 – Nov 8</button></nav></header>
+      <main>{''.join(sections)}<div class="footer callout"><strong>Definition and limits.</strong> US Shopify orders count as core B2B when the buyer is currently in a designated core list or segment, has ever received a designated Trade/Commercial/B2B flow email or submitted a designated form, used a trade/trd/b2b discount code (excluding CRTRA10), or the order's BigQuery net sales are at least $3,000. Extended-only memberships are excluded unless another core condition applies. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. October 31 appears in both views by design. No customer names, contact information, or addresses appear in this report.</div></main>
+      <script>{SCRIPT}</script></body></html>'''
 
 
 def main():
