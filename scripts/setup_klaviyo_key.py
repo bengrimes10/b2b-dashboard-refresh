@@ -8,3 +8,6 @@ if not key:
     raise SystemExit("No key entered")
 keyring.set_password("selectblinds-b2b-dashboard", "klaviyo-readonly", key)
 print("Key saved for this Windows account. No key was written to the repository.")
+print("Setup is complete. Do not paste the key again.")
+while getpass("Press Enter to close this window (input stays hidden): "):
+    print("No more input is needed. Press Enter to close.")
