@@ -22,6 +22,8 @@ The repository is checked out at `C:\Codex\My First Project\b2b-dashboard-refres
 
 The script currently flags attribution as unavailable because the prior weighted K-SQL attribution is not reproduced by the public API pull. It shows assigned coupons and matching order codes; the Klaviyo Used count is shown as unknown. A verified November 8 late-sales adjustment is documented in `docs/validation_2026-11-09.md`; other checkpoint changes over 1% stop publication. **Keep the Codex schedule paused and the older agent's task running until the owner reviews the private validation dashboard and chooses the cutover.**
 
+For the two-period boss snapshot, run `python scripts/build_boss_snapshot.py`. It creates a private interactive HTML report and a matching, print-ready PDF under ignored `out/`. The HTML's **Export PDF** control links to the PDF. Both exports contain order IDs but no customer names or contact details; review recipients before sharing.
+
 The first run reads flow-email and form events back to November 2023. Later runs use the local ignored signal cache with a six-hour overlap. The read-only REST path passed a live end-to-end validation on November 9, 2026; the remaining attribution and cutover limits are documented above.
 
 For a historical layout preview that contains no customer rows:

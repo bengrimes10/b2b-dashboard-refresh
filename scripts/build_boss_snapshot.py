@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 
 from google.cloud import bigquery
+from playwright.sync_api import sync_playwright
 
 import refresh_dashboard as base
 
@@ -227,7 +228,7 @@ STYLE = """
 *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 header{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--border);padding:12px 24px}
 h1{font-size:18px;margin:0 0 2px}.sub{color:var(--ink2);font-size:12px}.top{display:flex;justify-content:space-between;gap:16px;align-items:start}
-nav{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}nav button,.btn{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer}
+nav{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}nav button,.btn{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
 nav button:hover,.btn:hover{background:var(--ghost)}nav button[aria-selected=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 main{padding:20px 24px;max-width:1300px;margin:auto}article[hidden]{display:none!important}.period-title{font-size:18px;margin:4px 0 16px}.eyebrow{color:var(--ink2);font-size:12px;margin-bottom:2px}
 .grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -240,7 +241,13 @@ th{color:var(--ink2);font-weight:600;font-size:12px;white-space:nowrap;position:
 .callout{background:var(--ghost);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink2)}.footer{margin:16px 0 32px}
 @media(max-width:900px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}.barrow{grid-template-columns:135px minmax(50px,1fr) 115px}}
 @media(max-width:560px){header{padding:10px 14px}main{padding:14px}.g4{grid-template-columns:1fr}.barrow{grid-template-columns:1fr 1fr}.barlabel{grid-column:1/-1}.barvalue{font-size:11px}}
-@media print{header{position:static}nav,.btn{display:none}article[hidden]{display:block!important}.card{break-inside:avoid}.tw{max-height:none}.grid{break-inside:auto}}
+@media print{
+  @page{size:letter landscape;margin:.42in}
+  body{font-size:11px}header{position:static;padding:0 0 10px}main{padding:10px 0;max-width:none}nav,.btn{display:none!important}
+  article[hidden]{display:block!important}article+article{break-before:page}.card{break-inside:avoid}.tw{max-height:none;overflow:visible}.grid{break-inside:auto}
+  table{font-size:10px}th,td{padding:4px 5px}.sales-chart{max-height:205px}.kpi .v{font-size:21px}.note,.sub{font-size:10px}
+  .barrow{grid-template-columns:145px minmax(50px,1fr) 110px;font-size:10px}.barvalue small{font-size:9px}
+}
 """
 
 
@@ -258,6 +265,20 @@ window.addEventListener('hashchange',()=>selectPeriod(location.hash.slice(1),fal
 selectPeriod(location.hash.slice(1),false);
 window.addEventListener('load',()=>window.scrollTo(0,0));
 """
+
+
+def export_pdf(path: Path):
+    pdf = path.with_suffix(".pdf")
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(path.resolve().as_uri())
+        page.emulate_media(media="print", color_scheme="light")
+        page.pdf(path=str(pdf), format="Letter", landscape=True,
+                 print_background=True, margin={"top": "0.42in", "right": "0.42in",
+                                                "bottom": "0.42in", "left": "0.42in"})
+        browser.close()
+    return pdf
 
 
 def make_html(periods, generated_at):
@@ -314,7 +335,7 @@ def make_html(periods, generated_at):
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>B2B sales snapshot · October and Oct 31–Nov 8 2026</title><style>{STYLE}</style></head>
       <body><header><div class="top"><div><h1>B2B Sales Snapshot</h1><div class="sub">October 2026 and Oct 31 – Nov 8 2026 · Klaviyo + BigQuery · generated {escape(generated_at)} America/Phoenix</div></div>
-      <button class="btn" id="theme" type="button">Dark / light</button></div>
+      <div class="top"><a class="btn" href="B2B_Sales_Snapshot_October_and_Oct31_Nov8_2026.pdf" download>Export PDF</a><button class="btn" id="theme" type="button">Dark / light</button></div></div>
       <nav role="tablist" aria-label="Reporting period"><button type="button" role="tab" data-period="october" aria-selected="true">October 2026</button><button type="button" role="tab" data-period="oct31_nov8" aria-selected="false">Oct 31 – Nov 8</button></nav></header>
       <main>{''.join(sections)}<div class="footer callout"><strong>Definition and limits.</strong> Every B2B sale in this report is a US Shopify order with at least $3,000 in BigQuery net sales. All such purchasers count, including those with no B2B list, segment, flow, form, or coupon signal. Signal tables describe only these threshold-qualifying orders. CRTRA10 is excluded from the coupon signal. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. October 31 appears in both views by design. No customer names, contact information, or addresses appear in this report.</div></main>
       <script>{SCRIPT}</script></body></html>'''
@@ -359,7 +380,9 @@ def main():
     path.write_text(make_html(periods, generated_at), encoding="utf-8")
     audit = OUT / "B2B_Sales_Snapshot_October_and_Oct31_Nov8_2026.json"
     audit.write_text(json.dumps(periods, default=str, ensure_ascii=False), encoding="utf-8")
+    pdf = export_pdf(path)
     print("Private snapshot:", path, flush=True)
+    print("Boss-ready PDF:", pdf, flush=True)
 
 
 if __name__ == "__main__":
