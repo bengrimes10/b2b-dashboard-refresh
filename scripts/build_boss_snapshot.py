@@ -13,7 +13,6 @@ from pathlib import Path
 import re
 
 from google.cloud import bigquery
-from playwright.sync_api import sync_playwright
 
 import refresh_dashboard as base
 
@@ -261,24 +260,18 @@ function selectPeriod(id, updateHash=true){
 }
 document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>selectPeriod(b.dataset.period)));
 document.getElementById('theme').addEventListener('click',()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';});
+document.getElementById('export-html').addEventListener('click',()=>{
+  const contents='<!doctype html>'+document.documentElement.outerHTML;
+  const url=URL.createObjectURL(new Blob([contents],{type:'text/html;charset=utf-8'}));
+  const link=document.createElement('a');
+  link.href=url;link.download='B2B_Sales_Snapshot_Boss_Copy_2026.html';
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 window.addEventListener('hashchange',()=>selectPeriod(location.hash.slice(1),false));
 selectPeriod(location.hash.slice(1),false);
 window.addEventListener('load',()=>window.scrollTo(0,0));
 """
-
-
-def export_pdf(path: Path):
-    pdf = path.with_suffix(".pdf")
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(path.resolve().as_uri())
-        page.emulate_media(media="print", color_scheme="light")
-        page.pdf(path=str(pdf), format="Letter", landscape=True,
-                 print_background=True, margin={"top": "0.42in", "right": "0.42in",
-                                                "bottom": "0.42in", "left": "0.42in"})
-        browser.close()
-    return pdf
 
 
 def make_html(periods, generated_at):
@@ -335,7 +328,7 @@ def make_html(periods, generated_at):
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>B2B sales snapshot · October and Oct 31–Nov 8 2026</title><style>{STYLE}</style></head>
       <body><header><div class="top"><div><h1>B2B Sales Snapshot</h1><div class="sub">October 2026 and Oct 31 – Nov 8 2026 · Klaviyo + BigQuery · generated {escape(generated_at)} America/Phoenix</div></div>
-      <div class="top"><a class="btn" href="B2B_Sales_Snapshot_October_and_Oct31_Nov8_2026.pdf" download>Export PDF</a><button class="btn" id="theme" type="button">Dark / light</button></div></div>
+      <div class="top"><button class="btn" id="export-html" type="button">Download HTML</button><button class="btn" id="theme" type="button">Dark / light</button></div></div>
       <nav role="tablist" aria-label="Reporting period"><button type="button" role="tab" data-period="october" aria-selected="true">October 2026</button><button type="button" role="tab" data-period="oct31_nov8" aria-selected="false">Oct 31 – Nov 8</button></nav></header>
       <main>{''.join(sections)}<div class="footer callout"><strong>Definition and limits.</strong> Every B2B sale in this report is a US Shopify order with at least $3,000 in BigQuery net sales. All such purchasers count, including those with no B2B list, segment, flow, form, or coupon signal. Signal tables describe only these threshold-qualifying orders. CRTRA10 is excluded from the coupon signal. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. October 31 appears in both views by design. No customer names, contact information, or addresses appear in this report.</div></main>
       <script>{SCRIPT}</script></body></html>'''
@@ -380,9 +373,7 @@ def main():
     path.write_text(make_html(periods, generated_at), encoding="utf-8")
     audit = OUT / "B2B_Sales_Snapshot_October_and_Oct31_Nov8_2026.json"
     audit.write_text(json.dumps(periods, default=str, ensure_ascii=False), encoding="utf-8")
-    pdf = export_pdf(path)
     print("Private snapshot:", path, flush=True)
-    print("Boss-ready PDF:", pdf, flush=True)
 
 
 if __name__ == "__main__":
