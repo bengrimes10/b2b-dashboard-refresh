@@ -43,15 +43,13 @@ WITH c AS (
 ), big AS (
   SELECT n.order_name FROM nbs n JOIN shop USING(order_name) WHERE n.net>=3000
 ), ca AS (
-  SELECT COALESCE(c.order_name,b.order_name) order_name, IFNULL(c.fl,'') fl,
-    b.order_name IS NOT NULL is_big
-  FROM c FULL JOIN big b USING(order_name)
+  SELECT b.order_name, IFNULL(c.fl,'') fl, TRUE is_big
+  FROM big b LEFT JOIN c USING(order_name)
 )
 SELECT ca.order_name, CAST(shop.d AS STRING) d, nbs.net, shop.units,
   ca.fl, ca.is_big,
   (ca.is_big AND NOT REGEXP_CONTAINS(ca.fl,r'[lsfmc]')) big_only
 FROM ca JOIN shop USING(order_name) JOIN nbs USING(order_name)
-WHERE (REGEXP_CONTAINS(ca.fl,r'[lsfmc]') OR ca.is_big)
 ORDER BY nbs.net DESC, ca.order_name
 """
 
@@ -268,13 +266,13 @@ def make_html(periods, generated_at):
         orders = p["orders"]
         net = sum(money(o["net"]) for o in orders)
         big_only = [o for o in orders if o["big_only"]]
-        big_all = [o for o in orders if o["is_big"]]
+        signal_linked = [o for o in orders if not o["big_only"]]
         share = 100 * net / p["us_net"] if p["us_net"] else 0
         cards = [
             ("B2B cohort net sales", dollars(net), f'{share:.1f}% of US net sales ({dollars(p["us_net"])})'),
-            ("B2B cohort orders", f'{len(orders):,}', f'{sum(money(o["net"]) == 0 for o in orders)} zero-net orders included'),
-            ("Orders of $3,000+", f'{len(big_all):,}', dollars(sum(money(o["net"]) for o in big_all)) + ' net sales'),
-            ("$3,000+ with no core signal", f'{len(big_only):,}', dollars(sum(money(o["net"]) for o in big_only)) + ' net sales')]
+            ("Orders of $3,000+", f'{len(orders):,}', 'All US Shopify purchasers meeting the threshold'),
+            ("With a B2B signal", f'{len(signal_linked):,}', dollars(sum(money(o["net"]) for o in signal_linked)) + ' net sales'),
+            ("Without a B2B signal", f'{len(big_only):,}', dollars(sum(money(o["net"]) for o in big_only)) + ' net sales')]
         card_html = ''.join(f'<div class="card kpi"><div class="l">{escape(label)}</div><div class="v">{escape(value)}</div><div class="s">{escape(sub)}</div></div>'
                             for label, value, sub in cards)
         breakdowns = []
@@ -305,11 +303,11 @@ def make_html(periods, generated_at):
                         ' • '.join(signals) or 'B2B signal'))
         sections.append(f'''<article id="panel-{p['id']}" role="tabpanel" hidden><div class="eyebrow">{escape(p['start'])} through {escape(p['end'])}</div>
           <h2 class="period-title">{escape(p['label'])}</h2><div class="grid g4">{card_html}</div>
-          <div class="grid g2" style="margin-top:16px"><section class="card"><h2>B2B cohort net sales by day</h2><div class="note">US, USD · BigQuery net sales</div>{daily_chart(orders, p['start'], p['end'])}</section>
-          <section class="card"><h2>By qualifying signal (core, overlapping)</h2><div class="note">A buyer can qualify on several signals, so the bars do not add to the total.</div>{signal_bars(orders)}</section></div>
+          <div class="grid g2" style="margin-top:16px"><section class="card"><h2>B2B cohort net sales by day</h2><div class="note">US Shopify orders with at least $3,000 net sales</div>{daily_chart(orders, p['start'], p['end'])}</section>
+          <section class="card"><h2>Signals among $3,000+ orders (overlapping)</h2><div class="note">Only threshold-qualifying orders appear here. A purchaser may match several signals.</div>{signal_bars(orders)}</section></div>
           <div class="callout" style="margin-top:16px">Coupon rows below combine one time codes by recognizable family; TRD* cannot be assigned to a verified coupon key.</div>
           <div class="grid g2" style="margin-top:16px">{''.join(breakdowns)}</div>
-          <div class="card" style="margin-top:16px"><h2>Email performance</h2><div class="note">Klaviyo attributed email value follows Klaviyo's own attribution and order-value rules. It is separate from BigQuery B2B net sales.</div></div>
+          <div class="card" style="margin-top:16px"><h2>Email activity context</h2><div class="note">Klaviyo's email report includes conversions of all order sizes. These figures are context only; they are not filtered to the $3,000+ B2B cohort and must not be added to BigQuery B2B net sales.</div></div>
           <div class="grid g2" style="margin-top:16px">{''.join(email_sections)}</div>
           <section class="card" style="margin-top:16px"><h2>Top 25 B2B orders by net sales</h2><div class="note">Biggest orders first; the qualifying signals explain why each order counts.</div>
           {table(['#', 'Order', 'Date', 'Net sales', 'Qualifying signals'], top, numeric_columns=(0, 3))}</section></article>''')
@@ -318,7 +316,7 @@ def make_html(periods, generated_at):
       <body><header><div class="top"><div><h1>B2B Sales Snapshot</h1><div class="sub">October 2026 and Oct 31 – Nov 8 2026 · Klaviyo + BigQuery · generated {escape(generated_at)} America/Phoenix</div></div>
       <button class="btn" id="theme" type="button">Dark / light</button></div>
       <nav role="tablist" aria-label="Reporting period"><button type="button" role="tab" data-period="october" aria-selected="true">October 2026</button><button type="button" role="tab" data-period="oct31_nov8" aria-selected="false">Oct 31 – Nov 8</button></nav></header>
-      <main>{''.join(sections)}<div class="footer callout"><strong>Definition and limits.</strong> US Shopify orders count as core B2B when the buyer is currently in a designated core list or segment, has ever received a designated Trade/Commercial/B2B flow email or submitted a designated form, used a trade/trd/b2b discount code (excluding CRTRA10), or the order's BigQuery net sales are at least $3,000. Extended-only memberships are excluded unless another core condition applies. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. October 31 appears in both views by design. No customer names, contact information, or addresses appear in this report.</div></main>
+      <main>{''.join(sections)}<div class="footer callout"><strong>Definition and limits.</strong> Every B2B sale in this report is a US Shopify order with at least $3,000 in BigQuery net sales. All such purchasers count, including those with no B2B list, segment, flow, form, or coupon signal. Signal tables describe only these threshold-qualifying orders. CRTRA10 is excluded from the coupon signal. Current list/segment membership and historical email/form signals may postdate the order; association is not proof of causation. BigQuery net sales include later order adjustments recorded within each reporting window. Samples are excluded. October 31 appears in both views by design. No customer names, contact information, or addresses appear in this report.</div></main>
       <script>{SCRIPT}</script></body></html>'''
 
 

@@ -328,9 +328,9 @@ nbs AS (
  FROM `{PROJECT}.mart_ecom_tracker.net_sales_bookings`
  WHERE country='US' AND date_ref BETWEEN DATE '2026-10-31' AND @end GROUP BY 1),
 big AS (SELECT n.order_name FROM nbs n JOIN shop s USING(order_name) WHERE n.net_sales>=3000),
-ca AS (SELECT COALESCE(c.order_name,b.order_name) order_name, IFNULL(c.fl,'') fl,
- b.order_name IS NOT NULL is_big FROM c FULL JOIN big b USING(order_name)),
-c2 AS (SELECT *, (REGEXP_CONTAINS(fl,r'[lsfmc]') OR is_big) core,
+ca AS (SELECT b.order_name, IFNULL(c.fl,'') fl, TRUE is_big
+ FROM big b LEFT JOIN c USING(order_name)),
+c2 AS (SELECT *, TRUE core,
  REGEXP_CONTAINS(fl,r'l') f_list, REGEXP_CONTAINS(fl,r's') f_seg,
  REGEXP_CONTAINS(fl,r'f') f_flow, REGEXP_CONTAINS(fl,r'm') f_form,
  REGEXP_CONTAINS(fl,r'c') f_coupon,
@@ -467,6 +467,9 @@ def coupon_report(api, start_dt, now, order_codes):
             counts[str(key)] += 1
     names = ["TRADE10", "TRADE15", "TRADE20", "Trade_TRD", "Trade_TRA", "TRD500_Email"]
     names.extend(sorted(n for n in counts if n.upper().startswith("B2B") and n not in names))
+    order_code_families = {m.group(1).upper() for cs in order_codes.values() for c in cs
+                           if (m := re.match(r"(SBB2B\d+)", str(c), re.I))}
+    names.extend(sorted(order_code_families - {n.upper() for n in names}))
     coupons = {}
     for item in api.pages("coupons", {"page[size]": 100}):
         attributes = item.get("attributes") or {}
@@ -581,7 +584,8 @@ def main():
     msgs = flow_report(api, live, datetime.now(TZ))
     enr = enrollment(api, live, asof)
     camps = campaign_report(api, datetime.now(TZ))
-    coupons = coupon_report(api, start_dt, now, codes)
+    cohort_codes = {r["o"]: codes.get(r["o"], []) for r in big_rows}
+    coupons = coupon_report(api, start_dt, now, cohort_codes)
     issues = []
     for cp in coupons:
         if cp["n"] in ("TRADE10", "TRADE15", "TRADE20") and cp["left"] == "0":

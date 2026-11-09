@@ -2,6 +2,8 @@
 
 Rebuilds the interactive B2B flow / sales dashboard (single self-contained HTML file) from fresh Klaviyo and BigQuery data.
 
+**Current B2B sales definition:** every US Shopify order must have at least $3,000 in BigQuery net sales. All purchasers meeting that threshold count, even without a B2B signal. Lists, segments, flow emails, forms, and coupons describe those orders; they never add an order below $3,000. Snapshots created before this correction used a broader definition and should not be compared directly.
+
 - `template/dashboard_template.html`: dashboard with three data placeholders (`__D__`, `__COHORT__`, `__NA__`).
 - `scripts/build_dashboard.py`: fills the template from a data JSON and writes the HTML.
 - `data/sample_data.json`: example data (no customer records; `leads` is empty).

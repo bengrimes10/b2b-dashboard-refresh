@@ -1,5 +1,7 @@
 # Codex validation — 2026-11-09
 
+**Historical definition notice (2026-11-09):** The B2B cohort figures in this validation were produced before the user's final correction. They include signal-linked orders below $3,000 and are superseded by `docs/threshold_correction_2026-11-09.md`. The US sales checkpoint and API/rendering findings below remain valid.
+
 The connected Klaviyo account and new read-only key both identify SelectBlinds (account `UzEnEn`). Google Application Default Credentials can run read-only jobs in the EU BigQuery dataset. Customer records remain only in ignored local files under `out/` and `data/cache/`.
 
 ## Source and rendering checks
