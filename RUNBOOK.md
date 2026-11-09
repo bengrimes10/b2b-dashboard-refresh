@@ -17,7 +17,7 @@ Timezone for "today": America/Phoenix. All Klaviyo model calls need `model="clau
 - Metric "Received Email" `YiWaij`, `query_metric_aggregates`, by `$flow`, interval day, timezone US/Arizona, measurement unique, filter to the live flow ids. Fill `D.enr[]` {d: "YYYY-MM-DD", <flowId>: n ...} for every day from 2026-10-31 (zeros where none).
 
 ## 3. B2B cohort, sales, margin (B2B sales page)
-Cohort = US buyers who placed a Shopify order AND (a) are currently in a core list, OR (b) in a core segment, OR (c) ever received an email from any Trade/Commercial/B2B flow (live or draft), OR (d) submitted a trade/B2B form, OR (f) the order's NET SALES are >= $2,000 (a 'large order': counts on its own, no other signal needed; added straight from BigQuery), OR (e) used a trade/B2B-style discount code (a code containing trade, trd or b2b, e.g. 'Trade Discount', 'SBB2B10', or Klaviyo unique codes like TRADE15-TRADE15XXXXXXXX).
+Cohort = US buyers who placed a Shopify order AND (a) are currently in a core list, OR (b) in a core segment, OR (c) ever received an email from any Trade/Commercial/B2B flow (live or draft), OR (d) submitted a trade/B2B form, OR (f) the order's NET SALES are >= $3,000 (a 'large order': counts on its own, no other signal needed; added straight from BigQuery), OR (e) used a trade/B2B-style discount code (a code containing trade, trd or b2b, e.g. 'Trade Discount', 'SBB2B10', or Klaviyo unique codes like TRADE15-TRADE15XXXXXXXX).
 - Core lists: RArqFN, SuJXq5, XYuXP5, S3uABq, TM29XF, UeKxx2, UwUddt
 - Core segments: UtP84e, U2Z8YK, VExknn, Ycbxb4, R77LxD, Yb9xBp, UMxDa4
 - Flows (15): XA5MGj SZMWtA SVNQ6Y RjvnXL QTXBNv R77Xza T8tDXU TgGSgX ThRrHh XV5Jxt XcCt2k Y89wS2 YiK4az SWgfrf YnCsYM
@@ -35,7 +35,7 @@ WITH raw AS (SELECT x FROM UNNEST(SPLIT('<space-separated encoded orders>', ' ')
 c AS (SELECT SUBSTR(x,1,8) order_name, SUBSTR(x,9) fl FROM raw WHERE x != ''),   -- adjust SUBSTR if order names are longer than 8 chars
 shop AS (SELECT order_name, MIN(order_created_at) d, SUM(net_revenue_usd) oi_net, SUM(estimated_cost_usd) est_cost FROM `hd-global-analytics-platform.mart_ecom_tracker.order_items` WHERE country='US' AND order_type='Order' AND DataSource='Shopify' AND order_created_at BETWEEN '2026-10-31' AND CURRENT_DATE() GROUP BY 1),
 nbs AS (SELECT order_name, SUM(net_sales_usd) net_sales FROM `hd-global-analytics-platform.mart_ecom_tracker.net_sales_bookings` WHERE country='US' AND date_ref BETWEEN '2026-10-31' AND CURRENT_DATE() GROUP BY 1),
-big AS (SELECT order_name FROM nbs WHERE net_sales >= 2000 AND order_name IN (SELECT order_name FROM shop)),
+big AS (SELECT order_name FROM nbs WHERE net_sales >= 3000 AND order_name IN (SELECT order_name FROM shop)),
 ca AS (SELECT COALESCE(c.order_name, b.order_name) order_name, IFNULL(c.fl,'') fl, b.order_name IS NOT NULL is_big FROM c FULL JOIN big b ON c.order_name=b.order_name),
 c2 AS (SELECT order_name, (REGEXP_CONTAINS(fl,r'[lsfmc]') OR is_big) core, REGEXP_CONTAINS(fl,r'l') f_list, REGEXP_CONTAINS(fl,r's') f_seg, REGEXP_CONTAINS(fl,r'f') f_flow, REGEXP_CONTAINS(fl,r'm') f_form, REGEXP_CONTAINS(fl,r'c') f_coupon, is_big f_big, (is_big AND NOT REGEXP_CONTAINS(fl,r'[lsfmc]')) big_only FROM ca)
 SELECT FORMAT_DATE('%Y-%m-%d', DATE(shop.d)) d, IF(c2.core,'core','ext_only') tier, COUNT(*) orders, ROUND(SUM(nbs.net_sales),2) net_sales, ROUND(SUM(shop.est_cost),2) est_cost,
@@ -44,7 +44,7 @@ SELECT FORMAT_DATE('%Y-%m-%d', DATE(shop.d)) d, IF(c2.core,'core','ext_only') ti
  COUNTIF(f_big) n_big, ROUND(SUM(IF(f_big,nbs.net_sales,0)),2) s_big, COUNTIF(big_only) n_bigonly, ROUND(SUM(IF(big_only,nbs.net_sales,0)),2) s_bigonly
 FROM c2 JOIN shop USING(order_name) LEFT JOIN nbs USING(order_name) GROUP BY 1,2 ORDER BY 1,2
 ```
-Fill `cohort[]` (one per day, same order as `D.top`): `{d:'MM-DD', core:{o,net,cost,nl,ns,nf,nm,nc,sl,ss,sf,sm,sc,nb,sb,nbo,sbo}  (nb/sb = all $2,000+ orders, nbo/sbo = $2,000+ orders with no other signal; they are inside o/net), ext:{o,net,cost}}` (core = tier core; ext = tier ext_only; zero-fill days with none).
+Fill `cohort[]` (one per day, same order as `D.top`): `{d:'MM-DD', core:{o,net,cost,nl,ns,nf,nm,nc,sl,ss,sf,sm,sc,nb,sb,nbo,sbo}  (nb/sb = all $3,000+ orders, nbo/sbo = $3,000+ orders with no other signal; they are inside o/net), ext:{o,net,cost}}` (core = tier core; ext = tier ext_only; zero-fill days with none).
 
 US totals per day -> `D.top[]` (alias the order_items columns distinctly, e.g. `oi.oi_net`, `oi.est_cost`, to avoid nested-record output) {d:'YYYY-MM-DD', net (net_sales_bookings net_sales_usd), gross (gross_sales_usd), orders (distinct order key: order_name if Shopify else order_id, order_type='Order', is_original_version IS NULL OR =1), oi (order_items SUM(net_revenue_usd)), cost (SUM(estimated_cost_usd))}.
 Disclose in the dashboard text: samples excluded; net sales = total net revenue incl. shipping/other charges; cost = PRODUCT cost only, estimated cost covers only about a third of lines.
@@ -79,3 +79,4 @@ BigQuery on `order_items`, US, order_type='Order', since 36 months before today,
 - 2026-11-08 scheduled run: worked. Attribution K-SQL timed out with the flow-email condition; the simplified version (lists and segments only, no flow-email condition) worked, so the attribution table now excludes flow-email-only buyers (noted in the dashboard). Flow report shows RjvnXL sent about 4,500 emails on Nov 7; get_flows filter 'updated-after' is not valid. Skipped-send data in klaviyo.events.skipped_send covers campaigns only (no flow rows).
 - 2026-11-09 scheduled run: worked. The 2-day cohort K-SQL window timed out; splitting it into two windows (about 21h and 22h, overlapping by an hour) worked. Last run's windows end near the run time, so always start the next window about 6h earlier.
 - 2026-11-09 (later): added the $2,000+ order signal. Any US Shopify order with net sales >= $2,000 now counts as B2B (tier core) with no other signal needed; the cohort SQL above has the extra CTEs and cohort[] has nb/sb/nbo/sbo. Cohort totals roughly doubled, so compare only snapshots from 2026-11-09 onward (earlier history files use the old definition).
+- 2026-11-09 (later still): raised the large-order threshold from $2,000 to $3,000 net sales (user decision). The warm-leads page keeps its own $2,000 rule. Only the 2026-11-09 snapshot onward uses the $3,000 rule.
