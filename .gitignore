@@ -1,2 +1,4 @@
 data/latest.json
+data/cache/
 out/
+__pycache__/
