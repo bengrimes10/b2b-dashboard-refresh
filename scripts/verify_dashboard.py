@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open the built HTML in Chromium and verify the four report tabs."""
+"""Open the built HTML in Chromium and verify the five report tabs."""
 import argparse
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -15,9 +15,15 @@ with sync_playwright() as playwright:
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
     page.goto(args.html.resolve().as_uri())
-    for name in ("Flows", "New enrollees", "Warm leads", "B2B sales"):
+    for name in ("Flows", "New enrollees", "Warm leads", "B2B sales", "Commercial / trade email"):
         page.get_by_role("tab", name=name).click()
         assert page.locator("#main").inner_text().strip(), f"Empty {name} tab"
+    for view in ("Full history", "Since Nov 3", "Before / after"):
+        page.get_by_role("button", name=view).click()
+        assert page.locator("#main table tbody tr").count(), f"Empty email tracker {view}"
+    page.get_by_role("button", name="Trade", exact=True).click()
+    assert page.locator("#main table tbody tr").count(), "Empty trade email comparison"
+    page.get_by_role("tab", name="B2B sales").click()
     show_more = page.get_by_text("Show 25 more", exact=False)
     if show_more.count():
         show_more.first.click()
@@ -26,4 +32,4 @@ with sync_playwright() as playwright:
     browser.close()
 if errors:
     raise RuntimeError("Browser errors: " + "; ".join(errors))
-print("Verified four tabs; screenshot:", screenshot)
+print("Verified five tabs and email tracker views; screenshot:", screenshot)
