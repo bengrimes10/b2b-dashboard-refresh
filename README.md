@@ -6,6 +6,8 @@ Rebuilds the interactive B2B flow / sales dashboard (single self-contained HTML 
 
 - `template/dashboard_template.html`: dashboard with three data placeholders (`__D__`, `__COHORT__`, `__NA__`).
 - `scripts/build_dashboard.py`: fills the template from a data JSON and writes the HTML.
+- `scripts/email_tracker.py`: collects aggregate Zendesk commercial/trade email engagement and later Shopify purchase cohorts. The dashboard has a **Commercial / trade email** tab with November 3 onward daily tracking and all available monthly history.
+- `scripts/build_email_snapshot.py`: builds a portable, customer-detail-free HTML snapshot from aggregate email tracker JSON.
 - `data/sample_data.json`: example data (no customer records; `leads` is empty).
 - `RUNBOOK.md`: the exact daily procedure and queries.
 
@@ -23,6 +25,8 @@ The repository is checked out at `C:\Codex\My First Project\b2b-dashboard-refres
 The script currently flags attribution as unavailable because the prior weighted K-SQL attribution is not reproduced by the public API pull. It shows assigned coupons and matching order codes; the Klaviyo Used count is shown as unknown. A verified November 8 late-sales adjustment is documented in `docs/validation_2026-11-09.md`; other checkpoint changes over 1% stop publication. **Keep the Codex schedule paused and the older agent's task running until the owner reviews the private validation dashboard and chooses the cutover.**
 
 For the two-period boss snapshot, run `python scripts/build_boss_snapshot.py`. It creates a self-contained interactive HTML report under ignored `out/`. Its **Download HTML** button saves a portable copy with the tabs, charts, and order tables embedded; the recipient can open it locally without your project folder or account connections. It is a fixed data snapshot, not a live data refresh. The file contains order IDs but no customer names or contact details; review recipients before sharing.
+
+The commercial/trade email tracker uses Zendesk sender email matched to a later positive-net US Shopify order. Its three-day CVR updates only for fully mature contact dates; the monthly 30-day rate remains pending for newer contacts. The tracker shows an association, not proof that an email caused a sale. The one-time HTML snapshot and aggregate JSON are under ignored `out/` and can be shared without exposing customer contact details.
 
 The first run reads flow-email and form events back to November 2023. Later runs use the local ignored signal cache with a six-hour overlap. The read-only REST path passed a live end-to-end validation on November 9, 2026; the remaining attribution and cutover limits are documented above.
 

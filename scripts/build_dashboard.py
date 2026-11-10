@@ -15,6 +15,7 @@ meta = D["meta"]
 assert len(cohort) == len(D["top"]), "cohort and top must have one entry per day"
 assert len(D["enr"]) >= 1 and len(D["flows"]) >= 1
 html = (root / "template" / "dashboard_template.html").read_text(encoding="utf-8")
+html = html.replace("__EMAIL_WIDGET__", (root / "template" / "email_tracker_widget.js").read_text(encoding="utf-8"))
 html = html.replace("__D__", json.dumps(D).replace("</", "<\\/"))
 html = html.replace("__COHORT__", json.dumps(cohort).replace("</", "<\\/"))
 html = html.replace("__NA__", json.dumps(NA).replace("</", "<\\/"))

@@ -52,7 +52,7 @@ const money=(v,d=0)=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits
 const pct=(v,d=1)=>(v*100).toFixed(d)+'%', num=v=>Number(v).toLocaleString('en-US');
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const st={tab:'Flows',sel:new Set(D.flows.map(f=>f.id)),grain:'Day',topFrom:0,topTo:D.top.length-1,lq:'',tier:'All',rec:'All',minLtv:0,minOrders:0,sort:{k:'ltv',d:-1},limit:50};
-const TABS=['Flows','New enrollees','Warm leads','B2B sales'];
+const TABS=['Flows','New enrollees','Warm leads','B2B sales','Commercial / trade email'];
 const flowOf=id=>D.flows.find(f=>f.id===id);
 function chips(){return; $('#chips').innerHTML=D.flows.map(f=>`<button class="chip" data-f="${f.id}" aria-pressed="${st.sel.has(f.id)}"><span class="dot" style="background:var(${f.c})"></span>${esc(f.short)}</button>`).join('');}
 if($('#chips'))$('#chips').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;const id=b.dataset.f;st.sel.has(id)?st.sel.delete(id):st.sel.add(id);if(!st.sel.size)st.sel.add(id);chips();render();};
@@ -216,6 +216,8 @@ V['trackerView']=()=>{const rows=D.top.map((t,i)=>{const c=D.cohort[i];const o=c
  <div class="callout" style="margin-top:16px">Method: All US Shopify orders with at least $3,000 net sales are selected from BigQuery; Klaviyo Placed Order events matched by Shopify order name add signal details. Net sales = net_sales_bookings; margin = net revenue minus estimated product cost (cost on only about a third of lines, so directional). List and segment membership is current membership, and flow-email and form signals are ever since Nov 2023, so some buyers were tagged B2B after their order. ${D.meta.klaviyo_qualifying===undefined?'Klaviyo match count not recorded.':`Klaviyo returned ${num(D.meta.klaviyo_qualifying)} positive US order events; BigQuery identified ${num(D.meta.matched)} $3,000+ cohort orders.`} Klaviyo day boundaries are UTC. Sales charts end at the last complete day available in BigQuery.</div>`;};
 
 const NA=__NA__;
+__EMAIL_WIDGET__
+V['Commercial / trade email']=()=>emailTrackerHtml(D.email_tracker||{rows:[]},st);
 V['Flows']=()=>{const a=agg(st.sel);const fun=[{name:'Recipients',v:a.rec,s:5},{name:'Delivered',v:a.del,s:4},{name:'Opened',v:a.opens,s:3,note:pct(a.open)},{name:'Clicked',v:a.clicks,s:2,note:pct(a.click)},{name:'Ordered',v:a.conv,s:1,note:pct(a.cvr,2)}];
  const chipsHtml=D.flows.map(f=>`<button class="chip" data-f="${f.id}" aria-pressed="${st.sel.has(f.id)}"><span class="dot" style="background:var(${f.c})"></span>${esc(f.short)}</button>`).join('');
  const high=D.issues.filter(i=>i.sev==='HIGH');
@@ -250,6 +252,8 @@ V['B2B sales']=()=>{
  ${NA.cp.map(c=>`<li><b>${esc(c.n)}:</b> ${num(c.asg)} assigned; ${esc(c.left)} codes left; ${num(c.matched)} order codes matched.</li>`).join('')}
  <li>Code matches use order discount codes. CRTRA10 remains excluded from the qualifying signal pending owner confirmation.</li></ul></div></div>`;};
 $('#main').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b){const id=b.dataset.f;st.sel.has(id)?st.sel.delete(id):st.sel.add(id);if(!st.sel.size)st.sel.add(id);render();}
+ const eb=e.target.closest('[data-email-box]');if(eb){st.emailBox=eb.dataset.emailBox;render();}
+ const ev=e.target.closest('[data-email-view]');if(ev){st.emailView=ev.dataset.emailView;render();}
  const c=e.target.closest('[data-b2bonly]');if(c){st.b2bOnly=c.dataset.b2bonly==='1';render();}});
 
 chips();render();

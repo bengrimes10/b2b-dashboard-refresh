@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from google.cloud import bigquery
+import email_tracker
 
 ROOT = Path(__file__).resolve().parent.parent
 START = date(2026, 10, 31)
@@ -612,7 +613,7 @@ def main():
               "c": f"--s{(i % 5) + 1}"} for i, (fid, name) in enumerate(live.items())]
     data = {"D": {"flows": flows, "msgs": msgs, "enr": enr, "top": top,
                   "issues": issues, "coupons": [], "leads": leads, "big": big,
-                  "meta": meta},
+                  "email_tracker": email_tracker.collect(client, asof), "meta": meta},
             "cohort": cohort,
             "NA": {"attr": None, "camp": camps, "cp": coupons,
                    "sends": {"flows": sum(x["rec"] for x in msgs),
