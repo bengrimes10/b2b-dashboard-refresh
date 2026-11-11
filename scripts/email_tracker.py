@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 
 
 SQL = r"""
@@ -52,13 +53,15 @@ WITH freshness AS (
       ORDER BY contact_at LIMIT 1)[SAFE_OFFSET(0)] reply_minutes
   FROM labeled GROUP BY 1,2,3,4
 ), orders AS (
-  SELECT LOWER(TRIM(email)) email, order_name,
-    MIN(order_created_at_timestamp) placed_at
-  FROM `hd-global-analytics-platform.mart_ecom_tracker.order_items`
-  WHERE country = 'US' AND order_type = 'Order' AND DataSource = 'Shopify'
-    AND (is_original_version IS NULL OR is_original_version = 1)
-    AND order_created_at >= '2025-06-23' AND order_created_at < @asof
-    AND email IS NOT NULL
+  SELECT LOWER(TRIM(oi.email)) email, oi.order_name,
+    MIN(source.created_at) placed_at
+  FROM `hd-global-analytics-platform.mart_ecom_tracker.order_items` oi
+  JOIN `hd-global-analytics-platform.source_select_blinds_us_shopify.orders` source
+    ON source.name = oi.order_name
+  WHERE oi.country = 'US' AND oi.order_type = 'Order' AND oi.DataSource = 'Shopify'
+    AND (oi.is_original_version IS NULL OR oi.is_original_version = 1)
+    AND oi.order_created_at >= '2025-06-23' AND oi.order_created_at < @asof
+    AND oi.email IS NOT NULL
   GROUP BY 1,2
 ), sales AS (
   SELECT order_name, ROUND(SUM(net_sales_usd), 2) net_sales
@@ -69,16 +72,23 @@ WITH freshness AS (
 ), purchases AS (
   SELECT o.email, o.order_name, o.placed_at, s.net_sales
   FROM orders o JOIN sales s USING (order_name)
+), klaviyo_orders AS (
+  SELECT JSON_VALUE(item, '$.order_name') order_name,
+    SAFE_CAST(JSON_VALUE(item, '$.event_at') AS TIMESTAMP) event_at
+  FROM UNNEST(JSON_QUERY_ARRAY(@klaviyo_orders_json)) item
 ), matched AS (
   SELECT c.*,
     COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 3 DAY)) orders_3d,
     COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY)) orders_30d,
     COUNTIF(p.placed_at <= (SELECT data_through FROM freshness)) orders_to_date,
+    COUNTIF(p.placed_at <= (SELECT data_through FROM freshness)
+      AND k.event_at IS NOT NULL) klaviyo_verified_orders,
     SUM(IF(p.placed_at <= (SELECT data_through FROM freshness), p.net_sales, 0)) revenue_to_date,
     SUM(IF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 3 DAY), p.net_sales, 0)) revenue_3d,
     SUM(IF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY), p.net_sales, 0)) revenue_30d
   FROM contacts c LEFT JOIN purchases p ON c.email = p.email
     AND p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY)
+  LEFT JOIN klaviyo_orders k ON p.order_name = k.order_name
   GROUP BY c.grain,c.period,c.mailbox,c.email,c.first_contact,c.tickets,c.replies,c.replied_tickets,c.reply_minutes
 )
 SELECT grain, period, mailbox, COUNT(*) contacts, SUM(tickets) tickets,
@@ -92,6 +102,8 @@ SELECT grain, period, mailbox, COUNT(*) contacts, SUM(tickets) tickets,
   COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix') AND orders_30d > 0) buyers_30d,
   ROUND(SUM(IF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix'), revenue_30d, 0)), 2) revenue_30d,
   COUNTIF(orders_to_date > 0) buyers_to_date, SUM(orders_to_date) orders_to_date,
+  COUNTIF(klaviyo_verified_orders > 0) klaviyo_verified_buyers,
+  SUM(klaviyo_verified_orders) klaviyo_verified_orders,
   ROUND(SUM(revenue_to_date), 2) revenue_to_date,
   CAST(f.data_through AS STRING) data_through
 FROM matched CROSS JOIN freshness f
@@ -100,11 +112,15 @@ ORDER BY grain,period,mailbox
 """
 
 
-def collect(client, asof: date) -> dict:
+def collect(client, asof: date, klaviyo_orders: dict[str, str] | None = None) -> dict:
     from google.cloud import bigquery
 
     config = bigquery.QueryJobConfig(query_parameters=[
-        bigquery.ScalarQueryParameter("asof", "DATE", asof)
+        bigquery.ScalarQueryParameter("asof", "DATE", asof),
+        bigquery.ScalarQueryParameter("klaviyo_orders_json", "STRING", json.dumps([
+            {"order_name": name, "event_at": event_at}
+            for name, event_at in (klaviyo_orders or {}).items()
+        ]))
     ])
     rows = [{key: float(value) if isinstance(value, Decimal) else value
              for key, value in row.items()}

@@ -241,7 +241,8 @@ def code_strings(props: dict):
     return [x if isinstance(x, str) else str(x.get("code", "")) for x in raw]
 
 
-def order_flags(api: Klaviyo, start: datetime, end: datetime, lists, segments, ext_lists, ext_segments, cache):
+def order_flags(api: Klaviyo, start: datetime, end: datetime, lists, segments, ext_lists, ext_segments, cache,
+                order_events=None):
     flags = {}
     codes = defaultdict(list)
     details = {}
@@ -255,6 +256,8 @@ def order_flags(api: Klaviyo, start: datetime, end: datetime, lists, segments, e
         if not re.fullmatch(r"US\d{6,}", name):
             continue
         eligible += 1
+        if order_events is not None:
+            order_events[name] = event.get("attributes", {}).get("datetime")
         pid = (((event.get("relationships") or {}).get("profile") or {}).get("data") or {}).get("id")
         cs = code_strings(props)
         letters = set()
@@ -566,8 +569,10 @@ def main():
     list_ids, segment_ids = audiences["core_lists"], audiences["core_segments"]
     ext_list_ids, ext_segment_ids = audiences["ext_lists"], audiences["ext_segments"]
     cache = signal_cache(api, now)
+    klaviyo_order_events = {}
     flags, codes, eligible, details = order_flags(api, start_dt, now, list_ids, segment_ids,
-                                                  ext_list_ids, ext_segment_ids, cache)
+                                                  ext_list_ids, ext_segment_ids, cache,
+                                                  order_events=klaviyo_order_events)
     print("Positive US order events", eligible, "flagged orders", len(flags), flush=True)
     dates = [date.fromisoformat(r["d"]) for r in top]
     cohort = build_cohort(query(client, COHORT_SQL, dates[-1], flags), dates)
@@ -613,7 +618,7 @@ def main():
               "c": f"--s{(i % 5) + 1}"} for i, (fid, name) in enumerate(live.items())]
     data = {"D": {"flows": flows, "msgs": msgs, "enr": enr, "top": top,
                   "issues": issues, "coupons": [], "leads": leads, "big": big,
-                  "email_tracker": email_tracker.collect(client, asof), "meta": meta},
+                  "email_tracker": email_tracker.collect(client, asof, klaviyo_order_events), "meta": meta},
             "cohort": cohort,
             "NA": {"attr": None, "camp": camps, "cp": coupons,
                    "sends": {"flows": sum(x["rec"] for x in msgs),
