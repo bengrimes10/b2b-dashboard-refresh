@@ -41,6 +41,9 @@ WITH freshness AS (
     WHERE contact_date BETWEEN '2026-11-03' AND '2026-11-05'
   UNION ALL SELECT t.*, 'post_day' grain, CAST(contact_date AS STRING) period FROM tickets t
     WHERE contact_date >= '2026-11-03'
+  UNION ALL SELECT t.* REPLACE('both' AS mailbox), 'mtd' grain,
+    FORMAT_DATE('%Y-%m', contact_date) period FROM tickets t
+    WHERE contact_date >= DATE_TRUNC(@asof, MONTH)
 ), contacts AS (
   SELECT grain, period, mailbox, email, MIN(contact_at) first_contact,
     COUNT(*) tickets, SUM(replies) replies,
@@ -70,8 +73,8 @@ WITH freshness AS (
   SELECT c.*,
     COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 3 DAY)) orders_3d,
     COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY)) orders_30d,
-    COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 3 DAY) AND p.net_sales >= 3000) large_3d,
-    COUNTIF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY) AND p.net_sales >= 3000) large_30d,
+    COUNTIF(p.placed_at <= (SELECT data_through FROM freshness)) orders_to_date,
+    SUM(IF(p.placed_at <= (SELECT data_through FROM freshness), p.net_sales, 0)) revenue_to_date,
     SUM(IF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 3 DAY), p.net_sales, 0)) revenue_3d,
     SUM(IF(p.placed_at > c.first_contact AND p.placed_at <= TIMESTAMP_ADD(c.first_contact, INTERVAL 30 DAY), p.net_sales, 0)) revenue_30d
   FROM contacts c LEFT JOIN purchases p ON c.email = p.email
@@ -84,12 +87,12 @@ SELECT grain, period, mailbox, COUNT(*) contacts, SUM(tickets) tickets,
   APPROX_QUANTILES(IF(replied_tickets > 0, reply_minutes, NULL), 100)[OFFSET(50)] median_reply_business_min,
   COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 3 DAY), 'America/Phoenix')) mature_3d,
   COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 3 DAY), 'America/Phoenix') AND orders_3d > 0) buyers_3d,
-  COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 3 DAY), 'America/Phoenix') AND large_3d > 0) buyers_3k_3d,
   ROUND(SUM(IF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 3 DAY), 'America/Phoenix'), revenue_3d, 0)), 2) revenue_3d,
   COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix')) mature_30d,
   COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix') AND orders_30d > 0) buyers_30d,
-  COUNTIF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix') AND large_30d > 0) buyers_3k_30d,
   ROUND(SUM(IF(DATE(first_contact, 'America/Phoenix') < DATE(TIMESTAMP_SUB(f.data_through, INTERVAL 30 DAY), 'America/Phoenix'), revenue_30d, 0)), 2) revenue_30d,
+  COUNTIF(orders_to_date > 0) buyers_to_date, SUM(orders_to_date) orders_to_date,
+  ROUND(SUM(revenue_to_date), 2) revenue_to_date,
   CAST(f.data_through AS STRING) data_through
 FROM matched CROSS JOIN freshness f
 GROUP BY 1,2,3,f.data_through
